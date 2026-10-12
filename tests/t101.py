@@ -42,7 +42,7 @@ with sync_playwright() as p:
     ok('dashboard: lidserver apart genoemd', 'Servers waar je lid bent' in o.inner_text('main') and 'Gewone server' in o.inner_text('main'))
     o.screenshot(path='shots/c_dashboard.png', full_page=True)
     o.locator('.row', has_text='Mijn server').get_by_role('link', name='Instellen').click()
-    o.wait_for_selector('.tabs'); ok('serverpagina: tabs en waarschuwing over kanalen', 'antwoordkanaal' in o.inner_text('.note') and o.locator('[role=tab]').count() == 4)
+    o.wait_for_selector('.tabs'); ok('serverpagina: tabs en waarschuwing over kanalen', 'antwoordkanaal' in o.inner_text('.note') and o.locator('[role=tab]').count() == 5 and o.locator('[role=tab]').all_inner_texts()[2:4] == ["Commando's", 'Veelgestelde vragen'])
     ok('geen opslaanbalk zolang er niets gewijzigd is', o.locator('.save').is_hidden())
     o.select_option('select >> nth=0', 'zakelijk'); o.fill('input[maxlength="32"]', 'Core')
     o.fill('textarea', 'Verwijs voor regels naar #regels.')
@@ -72,6 +72,36 @@ with sync_playwright() as p:
     ok('geen beheertab voor gewone beheerder', o.get_by_role('tab', name='Beheer').count() == 0)
     o.get_by_role('tab', name='Algemeen').click(); o.select_option('select >> nth=0', 'kort')
     o.get_by_role('button', name='Terugzetten').click(); ok('terugzetten herstelt de opgeslagen waarde', o.input_value('select >> nth=0') == 'zakelijk' and o.locator('.save').is_hidden())
+
+    # ---- veelgestelde vragen (AI-terugval)
+    o.get_by_role('tab', name='Veelgestelde vragen').click(); o.wait_for_selector('.faqlist')
+    ok('faq-tab: uitleg in gewone taal en drie schakelaars', 'AI even niet bereikbaar' in o.inner_text('main') and 'typefouten' in o.inner_text('main') and all(o.get_by_label(t).is_checked() for t in ('Veelgestelde vragen gebruiken', 'Recent antwoord opnieuw gebruiken', 'Vaste antwoorden op groeten')))
+    ok('faq-tab: leeg, geen opslaanbalk', o.locator('.faq').count() == 0 and o.locator('.save').is_hidden())
+    o.get_by_role('button', name='Vraag toevoegen').click()
+    o.get_by_label('Vraag', exact=True).fill('Hoe laat is de raid?'); o.get_by_label('Antwoord op de vraag').fill('Elke dinsdag om 20:00.')
+    ok('faq-tab: tekentellers lopen mee', '20 van 120' in o.inner_text('.faq') and '22 van 600' in o.inner_text('.faq'), o.inner_text('.faq'))
+    ok('faq-tab: opslaanbalk na wijziging', o.locator('.save').is_visible())
+    o.get_by_role('button', name='Voorbeelden toevoegen').click()
+    ok('faq-tab: voorbeelden toegevoegd, uit en met aanpas-tekst', o.locator('.faq').count() == 4 and o.get_by_label('Vraag aan').nth(0).is_checked() and not any(o.get_by_label('Vraag aan').nth(i).is_checked() for i in (1, 2, 3)) and o.get_by_label('Antwoord op de vraag').nth(1).input_value().startswith('(pas dit antwoord aan)'))
+    o.get_by_role('button', name='Voorbeelden toevoegen').click(); ok('faq-tab: voorbeelden niet dubbel', o.locator('.faq').count() == 4)
+    o.get_by_label('Recent antwoord opnieuw gebruiken').uncheck()
+    o.locator('.faq').nth(3).get_by_role('button', name='Verwijder').click(); ok('faq-tab: verwijder haalt rij weg', o.locator('.faq').count() == 3)
+    o.screenshot(path='shots/c_faq_desktop.png', full_page=True)
+    o.get_by_role('button', name='Opslaan').click(); o.wait_for_selector('.save', state='hidden')
+    ok('faq-tab: opgeslagen', 'Opgeslagen' in o.inner_text('#toast') and o.locator('.save').is_hidden(), o.inner_text('#toast'))
+    jf = hub({'servers': [{'id': G1, 'name': 'Mijn server', 'n': 5}]})[1]['guilds'][G1]
+    ok('bot krijgt alleen de aan-vragen en de schakelaars', jf['faq'] == [{'q': 'Hoe laat is de raid?', 'a': 'Elke dinsdag om 20:00.'}] and jf['fallback'] == {'faq': True, 'cache': False, 'templates': True}, jf)
+    o.reload(); o.wait_for_selector('.faqlist')
+    ok('na verversen: faq-tab onthouden, rijen en schakelaar er nog', o.locator('.faq').count() == 3 and o.get_by_label('Vraag', exact=True).first.input_value() == 'Hoe laat is de raid?' and not o.get_by_label('Recent antwoord opnieuw gebruiken').is_checked() and o.locator('.save').is_hidden())
+    o.get_by_label('Vraag', exact=True).nth(1).fill('hoe laat is de RAID'); o.get_by_role('button', name='Opslaan').click(); o.wait_for_selector('#toast.bad:not([hidden])')
+    errors[:] = [e for e in errors if 'status of 400' not in e]   # de bewust geweigerde dubbele vraag geeft een 400 in de console
+    ok('dubbele vraag: nette melding, balk blijft', 'dubbel' in o.inner_text('#toast') and o.locator('.save').is_visible(), o.inner_text('#toast'))
+    o.get_by_role('button', name='Terugzetten').click(); ok('terugzetten na fout', o.get_by_label('Vraag', exact=True).nth(1).input_value() == 'Hoe kom ik aan een rol?')
+    for _ in range(40):
+        if o.get_by_role('button', name='Vraag toevoegen').is_disabled(): break
+        o.get_by_role('button', name='Vraag toevoegen').click()
+    ok('faq-tab: knop Vraag toevoegen stopt bij 30', o.locator('.faq').count() == 30 and '30 van 30' in o.inner_text('.faqbtns'))
+    o.get_by_role('tab', name='Gebruik').click(); ok('gebruikstab: regel met terugval vandaag', 'Antwoorden via terugval vandaag: 0' in o.inner_text('#fbtoday'), o.inner_text('main'))
     o.goto(B + '#/platform'); o.wait_for_selector('.rows, .panel'); ok('platform niet zichtbaar voor gewone gebruiker', 'Bot-verbinding' not in o.inner_text('main'))
     ok('geen Platform-link voor gewone gebruiker', o.get_by_role('link', name='Platform').count() == 0)
 
@@ -82,6 +112,13 @@ with sync_playwright() as p:
     mo.locator('.chan').nth(1).get_by_role('button', name='Eigen instellingen').click()
     ok('server op mobiel: geen horizontale scroll', mo.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), mo.evaluate('[document.documentElement.scrollWidth, window.innerWidth]'))
     mo.screenshot(path='shots/c_server_mobile.png', full_page=True)
+
+    mo.goto(B + '#/server/' + G1); mo.wait_for_selector('.tabs'); mo.get_by_role('tab', name='Veelgestelde vragen').click(); mo.wait_for_selector('.faq')
+    ok('faq-tab op mobiel: geen horizontale scroll', mo.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), mo.evaluate('[document.documentElement.scrollWidth, window.innerWidth]'))
+    mo.get_by_role('button', name='Vraag toevoegen').click()
+    ok('faq-tab op mobiel met extra rij: geen horizontale scroll, knoppen groot genoeg', mo.evaluate('document.documentElement.scrollWidth <= window.innerWidth') and mo.get_by_role('button', name='Verwijder').first.bounding_box()['height'] >= 30)
+    mo.screenshot(path='shots/c_faq_mobile.png', full_page=True)
+    mo.reload(); mo.wait_for_selector('.tabs')
 
     # ---- lid: voorkeuren en wissen
     l = br.new_context(viewport={'width': 1100, 'height': 800}).new_page(); attach(l); login_browser(l, 'member')
@@ -99,6 +136,16 @@ with sync_playwright() as p:
     # ---- beheerder: platform
     ad = br.new_context(viewport={'width': 1200, 'height': 900}).new_page(); attach(ad); login_browser(ad, 'admin')
     ad.get_by_role('link', name='Platform').click(); ad.wait_for_selector('.stats')
+    ok('platform: AI-status onbekend zolang de bot niets meldt', 'AI-status onbekend' in ad.inner_text('#aistatus'), ad.inner_text('#aistatus'))
+    ok('platform: kolom Via terugval in de servertabel', 'Via terugval' in ad.inner_text('thead'))
+    t_down = int(time.time()) - 1800
+    hub({'servers': [{'id': G1, 'name': 'Mijn server', 'n': 5}], 'ai': {'up': False, 'since': t_down, 'fails': 5}, 'usage': {G1: {'fb': 6}}})
+    ad.reload(); ad.wait_for_selector('.stats')
+    ok('platform: AI niet bereikbaar sinds <tijd> (rood), met pogingen', 'AI niet bereikbaar sinds' in ad.inner_text('#aistatus') and ad.locator('#aistatus .chip.bad').count() == 1 and '5 mislukte' in ad.inner_text('#aistatus'), ad.inner_text('#aistatus'))
+    ok('platform: Via terugval toont het aantal van vandaag', ad.locator('tr', has_text='Mijn server').locator('td').nth(5).inner_text() == '6', ad.locator('tr', has_text='Mijn server').inner_text())
+    ad.screenshot(path='shots/c_platform_ai_down.png', full_page=True)
+    hub({'servers': [{'id': G1, 'name': 'Mijn server', 'n': 5}], 'ai': {'up': True, 'since': int(time.time()), 'fails': 0}})
+    ad.reload(); ad.wait_for_selector('.stats'); ok('platform: AI bereikbaar (groen)', ad.locator('#aistatus .chip.ok').inner_text() == 'AI bereikbaar')
     ok('platform: cijfers, verbinding en servertabel', 'Bot online' in ad.inner_text('main') and 'Hub-adres' in ad.inner_text('main') and 'Mijn server' in ad.inner_text('table'), ad.inner_text('main')[:300])
     ad.get_by_role('button', name='Toon bot-sleutel').click(); ad.wait_for_selector('code:has-text("testhubsecret")')
     ok('platform: bot-sleutel op verzoek zichtbaar', True)

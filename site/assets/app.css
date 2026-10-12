@@ -125,6 +125,14 @@ main { padding-block: 28px 96px; min-height: 60vh; }
 .cmd { display: grid; grid-template-columns: auto 150px 1fr auto; gap: 10px; align-items: start; margin-bottom: 10px; }
 .cmd textarea { min-height: 44px; }
 @media (max-width: 640px) { .cmd { grid-template-columns: 1fr 1fr; } .cmd textarea { grid-column: 1 / -1; } }
+.faqlist { display: grid; gap: 14px; }
+.faq { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.faq:last-child { border-bottom: 0; padding-bottom: 0; }
+.faq .faqon { min-height: 44px; }
+.faqbody { min-width: 0; gap: 4px; }
+.faqbody textarea { min-height: 84px; }
+.faqbtns { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+@media (max-width: 640px) { .faq { grid-template-columns: 1fr auto; } .faqbody { grid-column: 1 / -1; grid-row: 2; } }
 .save { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -8px 24px rgba(0,0,0,.08); }
 .save .wrap { display: flex; gap: 12px; align-items: center; padding-block: 10px; }
 .save .grow { flex: 1; font-weight: 600; }

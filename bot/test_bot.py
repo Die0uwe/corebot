@@ -240,7 +240,7 @@ async def v3tests():
     seen['fail'] = True; mf = FakeMsg('hoe gaat het', channel=CH2, uid=77); await b.on_message(mf); seen['fail'] = False
     ok('Ollama-fout in de berichtstroom: gebruiker krijgt melding en er komt een alarm (dedupe op soort)', 'niet bereikbaar' in mf.replies[0] and b.reporter.pending['errors'] == 1)
     # v0.3.1: model bestaat niet
-    ok('versie 0.3.2 en soort model in standaardalarmen', B.BOT_VERSION == '0.4.0' and 'model' in B.ALERT_KINDS and 'model' in B.DEFAULT_ALERTS)
+    ok('versie 0.3.2 en soort model in standaardalarmen', B.BOT_VERSION == '0.5.0' and 'model' in B.ALERT_KINDS and 'model' in B.DEFAULT_ALERTS)
     async with aiohttp.ClientSession() as s404:
         seen['code'] = 404
         try:
@@ -356,7 +356,7 @@ async def recheck_loop():
     ok('hartslaglus: na opdracht komt binnen ~6 s een tweede hartslag (niet pas na 30 s)', len(pings) >= n0 + 2, str(len(pings) - n0))
     got = [r for _, d in pings[n0:] for r in d.get('action_results', [])]
     ok('hartslaglus: tweede hartslag meldt de uitkomst van de opdracht', {'id': 'rcl1', 'ok': True, 'error': ''} in got, str(got))
-    ok('hartslaglus: hartslag bevat tijdstip van controle en vlaggen l/t', 'perm_at' in pings[n0][1] and pings[n0][1]['version'] == '0.4.0')
+    ok('hartslaglus: hartslag bevat tijdstip van controle en vlaggen l/t', 'perm_at' in pings[n0][1] and pings[n0][1]['version'] == '0.5.0')
     EXTRA.clear()
     await b.session.close()
 asyncio.run(recheck_loop())

@@ -170,12 +170,15 @@ function fromProfile(d, isServer) {
 function toDraft(cfg) {
   const cc = {};
   for (const [id, p] of Object.entries(cfg.channel_cfg || {})) cc[id] = toProfile(p, false);
-  return { server: toProfile(cfg.server, true), channels: [...(cfg.channels || [])], channel_cfg: cc, allow_member_tone: cfg.allow_member_tone !== false };
+  const fb = cfg.fallback || {};
+  return { server: toProfile(cfg.server, true), channels: [...(cfg.channels || [])], channel_cfg: cc, allow_member_tone: cfg.allow_member_tone !== false,
+    faq: (cfg.faq || []).map((f) => ({ q: f.q, a: f.a, on: !!f.on })), fallback: { faq: fb.faq !== false, cache: fb.cache !== false, templates: fb.templates !== false } };
 }
 function fromDraft(d) {
   const cc = {};
   for (const [id, p] of Object.entries(d.channel_cfg)) { const o = fromProfile(p, false); if (Object.keys(o).length) cc[id] = o; }
-  return { server: fromProfile(d.server, true), channels: [...d.channels], channel_cfg: cc, allow_member_tone: d.allow_member_tone };
+  return { server: fromProfile(d.server, true), channels: [...d.channels], channel_cfg: cc, allow_member_tone: d.allow_member_tone,
+    faq: d.faq.filter((f) => f.q.trim() !== '' || f.a.trim() !== ''), fallback: { ...d.fallback } };
 }
 
 function field(label, input, hint) { return el('label', { class: 'f' }, label, input, hint ? el('small', null, hint) : null); }
@@ -257,13 +260,13 @@ async function serverView(id) {
   }
   const content = el('div');
   const tabs = el('div', { class: 'tabs', role: 'tablist' });
-  const tabDefs = [['algemeen', 'Algemeen'], ['kanalen', 'Kanalen'], ['commandos', 'Commando\'s'], ['gebruik', 'Gebruik'], ...(isAdmin ? [['beheer', 'Beheer']] : [])];
+  const tabDefs = [['algemeen', 'Algemeen'], ['kanalen', 'Kanalen'], ['commandos', 'Commando\'s'], ['faq', 'Veelgestelde vragen'], ['gebruik', 'Gebruik'], ...(isAdmin ? [['beheer', 'Beheer']] : [])];
   function drawTabs() {
     tabs.replaceChildren(...tabDefs.map(([k, label]) => el('button', { type: 'button', role: 'tab', 'aria-selected': k === tab ? 'true' : 'false', onclick: () => { tab = k; sessionStoragePut('tab:' + id, k); drawTabs(); drawTab(); } }, label)));
   }
   function drawTab() {
     sums.clear();
-    const f = { algemeen: tabAlgemeen, kanalen: tabKanalen, commandos: tabCommandos, gebruik: tabGebruik, beheer: tabBeheer }[tab];
+    const f = { algemeen: tabAlgemeen, kanalen: tabKanalen, commandos: tabCommandos, faq: tabFaq, gebruik: tabGebruik, beheer: tabBeheer }[tab];
     content.replaceChildren(f());
   }
   function tabAlgemeen() {
@@ -316,6 +319,48 @@ async function serverView(id) {
     return el('div', { class: 'panel stack' }, el('p', null, 'Commando\'s die in elk antwoordkanaal werken. Een kanaal kan een commando met dezelfde naam zelf overnemen. Leden typen bijvoorbeeld !regels. Het commando !help bestaat al en toont deze lijst.'),
       cmdEditor(draft.server.commands));
   }
+  const FAQ_MAX = 30, FAQ_EXAMPLES = [
+    ['Hoe kom ik aan een rol?', '(pas dit antwoord aan) Je kiest zelf een rol in het kanaal voor rollen. Vraag het een beheerder als je er niet uitkomt.'],
+    ['Waar vind ik de regels?', '(pas dit antwoord aan) De regels staan vastgepind in het kanaal met de serverregels.'],
+    ['Wie zijn de beheerders?', '(pas dit antwoord aan) Zet hier de namen van de beheerders of verwijs naar een kanaal waar ze te vinden zijn.'],
+  ];
+  function tabFaq() {
+    const list = draft.faq, fbk = draft.fallback;
+    const rows = el('div', { class: 'faqlist' });
+    const counter = (v, max) => el('span', { class: 'hint' }, v.length + ' van ' + max);
+    const draw = () => {
+      if (!list.length) rows.replaceChildren(el('p', { class: 'hint' }, 'Nog geen vragen. Voeg er een toe of begin met de voorbeelden.'));
+      else rows.replaceChildren(...list.map((f, i) => {
+        const cq = counter(f.q, 120), ca = counter(f.a, 600);
+        return el('div', { class: 'faq' },
+          el('label', { class: 'sw faqon' }, el('input', { type: 'checkbox', checked: f.on, 'aria-label': 'Vraag aan', onchange: (e) => { f.on = e.target.checked; G.touch(); } })),
+          el('div', { class: 'faqbody stack' },
+            el('input', { type: 'text', value: f.q, maxlength: 120, placeholder: 'Vraag van een lid', 'aria-label': 'Vraag', oninput: (e) => { f.q = e.target.value; cq.textContent = f.q.length + ' van 120'; G.touch(); } }), cq,
+            el('textarea', { maxlength: 600, placeholder: 'Het antwoord van de bot', 'aria-label': 'Antwoord op de vraag', oninput: (e) => { f.a = e.target.value; ca.textContent = f.a.length + ' van 600'; G.touch(); } }, f.a), ca),
+          el('button', { class: 'btn small danger faqdel', type: 'button', onclick: () => { list.splice(i, 1); draw(); G.touch(); } }, 'Verwijder'));
+      }));
+      add.disabled = list.length >= FAQ_MAX;
+      count.textContent = list.length + ' van ' + FAQ_MAX;
+    };
+    const count = el('span', { class: 'hint' });
+    const add = el('button', { class: 'btn small', type: 'button', onclick: () => { if (list.length < FAQ_MAX) { list.push({ q: '', a: '', on: true }); draw(); G.touch(); } } }, 'Vraag toevoegen');
+    const examples = el('button', { class: 'btn small', type: 'button', onclick: () => {
+      const have = new Set(list.map((f) => f.q.trim().toLowerCase()));
+      const fresh = FAQ_EXAMPLES.filter(([q]) => !have.has(q.toLowerCase())).slice(0, FAQ_MAX - list.length);
+      if (!fresh.length) { toast('De voorbeelden staan er al, of de lijst is vol.', true); return; }
+      for (const [q, a] of fresh) list.push({ q, a, on: false });
+      draw(); G.touch(); toast('Voorbeelden toegevoegd, nog uit. Pas de antwoorden aan en zet ze aan.');
+    } }, 'Voorbeelden toevoegen');
+    draw();
+    return el('div', { class: 'stack' },
+      el('div', { class: 'panel stack' },
+        el('p', null, 'Dit zijn antwoorden die de bot geeft als de AI even niet bereikbaar is. De bot herkent de vraag aan de woorden, ook bij typefouten. Zolang de AI werkt, antwoordt de AI zelf en blijft deze lijst ongebruikt.'),
+        sw('Veelgestelde vragen gebruiken', fbk.faq, (v) => { fbk.faq = v; G.touch(); }, 'Uit betekent dat de bot de lijst hieronder nooit gebruikt.'),
+        sw('Recent antwoord opnieuw gebruiken', fbk.cache, (v) => { fbk.cache = v; G.touch(); }, 'Stelt iemand dezelfde vraag als net, dan geeft de bot het eerdere antwoord. Dit staat alleen in het werkgeheugen van de bot, maximaal 24 uur, en verdwijnt bij een herstart.'),
+        sw('Vaste antwoorden op groeten', fbk.templates, (v) => { fbk.templates = v; G.touch(); }, 'Bijvoorbeeld een groet terug op "hoi" of een reactie op "bedankt".')),
+      el('div', { class: 'panel stack' }, el('h3', null, 'Jouw vragen'), rows,
+        el('div', { class: 'faqbtns' }, add, examples, count)));
+  }
   function tabGebruik() {
     const u = g.usage; const pct = u.cap > 0 ? Math.min(100, Math.round(u.today / u.cap * 100)) : 0;
     const meterFill = el('i'); meterFill.style.width = pct + '%';
@@ -323,6 +368,7 @@ async function serverView(id) {
     const max = Math.max(1, ...week.map((d) => d.answered));
     return el('div', { class: 'stack panel' }, el('h3', null, 'Antwoorden vandaag'),
       el('div', null, el('strong', null, String(u.today)), u.cap > 0 ? ' van ' + u.cap : ' (geen daglimiet)', u.cap > 0 ? el('div', { class: 'meter' + (pct >= 90 ? ' hot' : ''), role: 'img', 'aria-label': pct + ' procent van de daglimiet' }, meterFill) : null),
+      el('p', { id: 'fbtoday' }, 'Antwoorden via terugval vandaag: ', el('strong', null, String(u.fallback_today || 0))),
       el('h3', null, 'Laatste 7 dagen'),
       el('div', { class: 'bars' }, week.map((d) => { const bar = el('i', { title: d.day + ': ' + d.answered }); bar.style.height = Math.round(d.answered / max * 90) + 'px'; return el('div', null, String(d.answered), bar, d.day.slice(8) + '/' + d.day.slice(5, 7)); })),
       el('p', { class: 'hint' }, 'Alleen aantallen. De inhoud van berichten wordt niet bewaard.'));
@@ -390,11 +436,17 @@ async function platformView() {
   const secretOut = el('div');
   const when = (ts) => { if (!ts) return 'nog nooit'; const s = Math.max(0, Math.round(Date.now() / 1000 - ts)); return s < 90 ? 'zojuist' : s < 5400 ? Math.round(s / 60) + ' minuten geleden' : s < 172800 ? Math.round(s / 3600) + ' uur geleden' : Math.round(s / 86400) + ' dagen geleden'; };
   const online = a.hub_last && Date.now() / 1000 - a.hub_last.at < 900;
+  const clock = (ts) => { const d = new Date(ts * 1000), t = d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }); return d.toDateString() === new Date().toDateString() ? t : d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }) + ' ' + t; };
+  const ai = a.hub_last && a.hub_last.ai;
+  const aiLine = !ai ? el('span', { class: 'chip warn' }, 'AI-status onbekend')
+    : ai.up ? el('span', { class: 'chip ok' }, 'AI bereikbaar')
+      : el('span', { class: 'chip bad' }, 'AI niet bereikbaar sinds ' + clock(ai.since));
   show(
     el('div', { class: 'head' }, el('h1', null, 'Platform'), el('span', { class: 'grow' }), st.sbwebui_url ? el('a', { class: 'btn small', href: st.sbwebui_url, target: '_blank', rel: 'noopener' }, 'Open SBWebUI') : null),
     el('div', { class: 'stats' }, [['Servers met bot', a.stats.present + ' van ' + a.stats.servers], ['Gebruikers', a.stats.users], ['Antwoorden vandaag', a.stats.today], ['Antwoorden 7 dagen', a.stats.week]].map(([l, v]) => el('div', null, el('b', null, String(v)), l))),
     el('div', { class: 'panel stack' }, el('h2', null, 'Bot-verbinding'),
       el('div', null, online ? el('span', { class: 'chip ok' }, 'Bot online') : el('span', { class: 'chip bad' }, 'Bot niet gezien'), ' laatste sync ', when(a.hub_last && a.hub_last.at), a.hub_last && a.hub_last.version ? ' (versie ' + a.hub_last.version + ')' : ''),
+      el('div', { id: 'aistatus' }, aiLine, ai && !ai.up && ai.fails > 0 ? ' ' + ai.fails + ' mislukte pogingen op rij' : '', !ai ? ' De bot meldt dit nog niet.' : ''),
       el('p', null, 'Hub-adres voor de bot: ', el('code', null, a.hub_url)),
       el('p', null, 'Redirect-adressen voor het Discord Developer Portal (OAuth2 > Redirects), zet ze allemaal erin:'), el('ul', null, a.redirect_uris.map((u) => el('li', null, el('code', null, u)))),
       a.canonical_host ? el('p', { class: 'hint' }, 'Alle andere domeinen sturen door naar ' + a.canonical_host + '.') : el('p', { class: 'hint' }, 'Er is nog geen hoofddomein ingesteld: elk toegestaan domein werkt los. Zet canonical_host in config.php als corebot.info live is.'),
@@ -411,10 +463,10 @@ async function platformView() {
       } }, 'Opslaan'))),
     el('h2', { class: 'mt2' }, 'Alle servers'),
     el('div', { class: 'tablewrap' }, el('table', null,
-      el('thead', null, el('tr', null, ['Server', 'Leden', 'Status', 'Model', 'Vandaag', ''].map((h) => el('th', null, h)))),
+      el('thead', null, el('tr', null, ['Server', 'Leden', 'Status', 'Model', 'Vandaag', 'Via terugval', ''].map((h) => el('th', null, h)))),
       el('tbody', null, a.guilds.map((g) => el('tr', null, el('td', null, g.name || g.id), el('td', null, String(g.members)),
         el('td', null, g.suspended ? el('span', { class: 'chip bad' }, 'Geschorst') : g.bot_present ? el('span', { class: 'chip ok' }, 'Actief') : el('span', { class: 'chip warn' }, 'Weg')),
-        el('td', null, g.model || '-'), el('td', null, g.today + (g.daily_cap ? ' / ' + g.daily_cap : '')),
+        el('td', null, g.model || '-'), el('td', null, g.today + (g.daily_cap ? ' / ' + g.daily_cap : '')), el('td', null, String(g.fallback)),
         el('td', null, el('a', { href: '#/server/' + g.id }, 'Openen'))))))));
 }
 

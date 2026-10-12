@@ -1,4 +1,4 @@
-CoreBot (corebot.info) v0.1.1 - installatie
+CoreBot (corebot.info) v0.2.0 - installatie
 
 Installatiecode: staat in de release-zip (inc/install_code.php), niet in de repo.
 

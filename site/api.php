@@ -66,7 +66,7 @@ function guild_payload(array $row, array $user): array
         'id' => $gid, 'name' => $row['name'], 'icon' => icon_url($gid, $row['icon']), 'members' => (int)$row['members'],
         'bot_present' => (int)$row['bot_present'] === 1, 'config' => $conf, 'rev' => md5((string)json_encode($conf)),
         'channels' => $channels, 'warnings' => cb_warnings($row, $eff),
-        'usage' => ['today' => cb_usage_today($gid)['answered'], 'cap' => cb_cap($row), 'week' => $week],
+        'usage' => ['today' => cb_usage_today($gid)['answered'], 'fallback_today' => cb_usage_today($gid)['fallback'], 'cap' => cb_cap($row), 'week' => $week],
         'invite_url' => cb_invite_url($gid),
         'limits' => array_map(static fn ($r) => ['min' => $r[0], 'max' => $r[1], 'label' => $r[2]], CB_RANGES),
     ];
@@ -124,9 +124,9 @@ try {
                 'week' => (int)q('select coalesce(sum(answered),0) from usage_daily where day >= (curdate() - interval 6 day)')->fetchColumn(),
             ];
             $guilds = q('select g.guild_id as id, g.name, g.members, g.bot_present, g.bot_seen, g.suspended, g.model, g.daily_cap,
-                         coalesce(d.answered,0) as today from guilds g left join usage_daily d on d.guild_id = g.guild_id and d.day = curdate()
+                         coalesce(d.answered,0) as today, coalesce(d.fallback,0) as fallback from guilds g left join usage_daily d on d.guild_id = g.guild_id and d.day = curdate()
                          order by g.bot_present desc, g.bot_seen desc limit 200')->fetchAll();
-            foreach ($guilds as &$g) { $g['bot_present'] = (int)$g['bot_present'] === 1; $g['suspended'] = (int)$g['suspended'] === 1; $g['members'] = (int)$g['members']; $g['today'] = (int)$g['today']; $g['daily_cap'] = $g['daily_cap'] === null ? null : (int)$g['daily_cap']; }
+            foreach ($guilds as &$g) { $g['bot_present'] = (int)$g['bot_present'] === 1; $g['suspended'] = (int)$g['suspended'] === 1; $g['members'] = (int)$g['members']; $g['today'] = (int)$g['today']; $g['fallback'] = (int)$g['fallback']; $g['daily_cap'] = $g['daily_cap'] === null ? null : (int)$g['daily_cap']; }
             unset($g);
             $last = json_decode(setting('hub_last'), true);
             json_out(['stats' => $stats, 'guilds' => $guilds, 'hub_last' => is_array($last) ? $last : null,

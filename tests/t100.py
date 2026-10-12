@@ -206,6 +206,99 @@ st, j = hub({'servers': [{'id': G1, 'name': 'x', 'n': 1}]}); ok('bot krijgt een 
 st, j = hub({'servers': [], 'ack_forget': ['222222222222222222']}); ok('na bevestiging verdwijnt de opdracht', j['forget'] == [] and sql('select count(*) from forget_queue') == '0')
 ok('auditregels zijn geanonimiseerd', sql('select count(*) from audit_log where user_id is not null and user_id not in (select id from users)') == '0')
 
+# ---------- AI-terugval: FAQ, schakelaars, ai-status, fb, migratie ----------
+def gcfg(gid=G1): return o.get('guild', id=gid)[1]
+def save_cfg(cfg, gid=G1):
+    r = gcfg(gid)['rev']; return o.post('guild_save', {'id': gid, 'rev': r, 'config': cfg})
+cur = gcfg()['config']
+ok('bestaande config zonder faq: lege lijst en alle terugvalschakelaars aan', cur['faq'] == [] and cur['fallback'] == {'faq': True, 'cache': True, 'templates': True}, cur)
+e0 = hub({'servers': [{'id': G1, 'name': 'Mijn server', 'n': 50}]})[1]['guilds'][G1]
+ok('effective: faq [] en fallback met drie booleans', e0['faq'] == [] and e0['fallback'] == {'faq': True, 'cache': True, 'templates': True}, e0)
+ok('effective: lege faq is [] in JSON', '"faq": []' in json.dumps(e0))
+sql(f'update guilds set config=\'{{"server":{{"tone":"kort"}},"channels":["{C1}"]}}\' where guild_id="{G1}"')
+oud = gcfg(); ok('oude config zonder faq/fallback blijft werken', oud['config']['faq'] == [] and oud['config']['server'] == {'tone': 'kort'} and oud['config']['channels'] == [C1], oud['config'])
+base2 = {'server': {}, 'channels': [C1], 'channel_cfg': {}}
+def faq_bad(name, faq, frag, extra=None):
+    st, j = save_cfg({**base2, 'faq': faq, **(extra or {})}); ok(name, st == 400 and frag in json.dumps(j, ensure_ascii=False), f'{st} {j}')
+faq_bad('faq: vraag te lang', [{'q': 'x' * 121, 'a': 'ja', 'on': True}], '1 en 120')
+faq_bad('faq: antwoord te lang', [{'q': 'Regels?', 'a': 'x' * 601, 'on': True}], '1 en 600')
+faq_bad('faq: antwoord ontbreekt', [{'q': 'Regels?', 'a': '  ', 'on': True}], '1 en 600')
+faq_bad('faq: vraag ontbreekt', [{'q': '', 'a': 'ja', 'on': True}], '1 en 120')
+faq_bad('faq: dubbele vraag (hoofdletters en leestekens genegeerd)', [{'q': 'Waar zijn de regels?', 'a': 'a', 'on': True}, {'q': '  waar ZIJN de  regels ', 'a': 'b', 'on': False}], 'dubbel')
+faq_bad('faq: vraag zonder woorden', [{'q': '?!', 'a': 'a', 'on': True}], 'geen woorden')
+faq_bad('faq: meer dan 30', [{'q': f'Vraag {i}', 'a': 'a', 'on': True} for i in range(31)], 'Maximaal 30')
+st, j = save_cfg({**base2, 'faq': [{'q': f'Vraag {i}', 'a': 'a', 'on': False} for i in range(30)]}); ok('faq: precies 30 mag', st == 200 and len(j['guild']['config']['faq']) == 30, j)
+st, j = save_cfg({**base2, 'faq': [{'q': '  Waar vind ik <b>de regels</b>?  ', 'a': ' Kijk in <i>#regels</i>. ', 'on': True}, {'q': '', 'a': '', 'on': True}, 'rommel', {'q': 'Wie is de baas?', 'a': 'Kees', 'on': False}, {'q': 'Tot ziens', 'a': 'Doei', 'on': 1}]})
+f = j['guild']['config']['faq'] if st == 200 else None
+ok('faq opgeslagen: html weg, getrimd, lege items overgeslagen', st == 200 and f == [{'q': 'Waar vind ik bde regels/b?', 'a': 'Kijk in i#regels/i.', 'on': True}, {'q': 'Wie is de baas?', 'a': 'Kees', 'on': False}, {'q': 'Tot ziens', 'a': 'Doei', 'on': True}], j)
+ok('faq terug te zien in een nieuwe aanvraag', gcfg()['config']['faq'] == f)
+ok('faq staat in de database als lijst onder config.faq', len(json.loads(sql(f'select config from guilds where guild_id="{G1}"'))['faq']) == 3)
+e1 = hub({'servers': [{'id': G1, 'name': 'Mijn server', 'n': 50}]})[1]['guilds'][G1]
+ok('effective: alleen aan-items als {q, a}', e1['faq'] == [{'q': 'Waar vind ik bde regels/b?', 'a': 'Kijk in i#regels/i.'}, {'q': 'Tot ziens', 'a': 'Doei'}], e1['faq'])
+ok('effective: fallback standaard overal true', e1['fallback'] == {'faq': True, 'cache': True, 'templates': True}, e1['fallback'])
+st, j = save_cfg({**base2, 'faq': f, 'fallback': {'cache': False}})
+ok('fallback.cache uitzetten; ontbrekende sleutels blijven true', st == 200 and j['guild']['config']['fallback'] == {'faq': True, 'cache': False, 'templates': True}, j)
+st, j = save_cfg({**base2, 'faq': f, 'fallback': {'faq': False, 'cache': False, 'templates': False}})
+e2 = hub({'servers': [{'id': G1, 'name': 'Mijn server', 'n': 50}]})[1]['guilds'][G1]
+ok('alle drie de lagen uit: effective geeft false/false/false', st == 200 and e2['fallback'] == {'faq': False, 'cache': False, 'templates': False} and len(e2['faq']) == 2, e2)
+ok('fallback-waarden zijn echte booleans', all(isinstance(v, bool) for v in e2['fallback'].values()))
+r1 = gcfg()['rev']
+st, j = o.post('guild_save', {'id': G1, 'rev': r1, 'config': {**base2, 'faq': f}}); ok('opslaan met actuele rev lukt', st == 200)
+st, j = o.post('guild_save', {'id': G1, 'rev': r1, 'config': {**base2, 'faq': []}}); ok('rev/409: verouderde rev na faq-wijziging geeft 409', st == 409, j)
+rv_before = gcfg()['rev']; save_cfg({**base2, 'faq': f + [{'q': 'Nieuwe vraag', 'a': 'ok', 'on': True}]})
+ok('rev verandert als alleen de faq verandert', gcfg()['rev'] != rv_before)
+rv_before = gcfg()['rev']; save_cfg({**base2, 'faq': f + [{'q': 'Nieuwe vraag', 'a': 'ok', 'on': True}], 'fallback': {'templates': False}})
+ok('rev verandert als alleen een schakelaar verandert', gcfg()['rev'] != rv_before)
+ok('faq-tekst niet in het auditlogboek', 'Nieuwe vraag' not in sql('select group_concat(detail) from audit_log'))
+ok('geen modelnaam of geheim in faq/fallback-uitvoer', 'qwen' not in json.dumps(gcfg()['config']))
+save_cfg({**base2, 'faq': []})
+
+# ai-status via de hub
+S1 = [{'id': G1, 'name': 'Mijn server', 'n': 50}]
+a0 = adm.get('admin')[1]
+ok('admin: zonder ai-melding geen ai in hub_last', 'ai' not in a0['hub_last'] and a0['hub_last']['app_id'] == '123456789012345678', a0['hub_last'])
+t0 = int(time.time()) - 600
+hub({'servers': S1, 'ai': {'up': False, 'since': t0, 'fails': 4}})
+ai = adm.get('admin')[1]['hub_last']
+ok('ai-status opgeslagen in hub_last naast at/version/app_id', ai['ai'] == {'up': False, 'since': t0, 'fails': 4} and ai['app_id'] == '123456789012345678' and ai['version'] == 'test' and ai['at'] > 0, ai)
+for name, bad_ai in (('up geen bool', {'up': 'ja', 'since': t0, 'fails': 1}), ('since in de toekomst', {'up': True, 'since': int(time.time()) + 9999, 'fails': 1}),
+                     ('since negatief', {'up': True, 'since': -5, 'fails': 1}), ('fails negatief', {'up': True, 'since': t0, 'fails': -1}), ('fails tekst', {'up': True, 'since': t0, 'fails': 'x'}),
+                     ('sleutel ontbreekt', {'up': True}), ('geen object', 'kapot'), ('lijst', [1, 2]), ('since als float', {'up': True, 'since': 1.5e9 + 0.5, 'fails': 0})):
+    st, _ = hub({'servers': S1, 'ai': bad_ai}); h2 = adm.get('admin')[1]['hub_last']
+    ok(f'ongeldige ai-waarde genegeerd ({name}): sync lukt, oude status blijft', st == 200 and h2['ai'] == {'up': False, 'since': t0, 'fails': 4}, (st, h2))
+hub({'servers': S1})
+ok('sync zonder ai laat de laatst gemelde status staan', adm.get('admin')[1]['hub_last']['ai']['fails'] == 4)
+hub({'servers': S1, 'ai': {'up': True, 'since': t0 + 300, 'fails': 0}})
+ok('ai weer bereikbaar overschrijft de status', adm.get('admin')[1]['hub_last']['ai'] == {'up': True, 'since': t0 + 300, 'fails': 0})
+ok('ai-status niet in het hub-antwoord of in gebruikersantwoorden', '"ai"' not in json.dumps(hub({'servers': S1})[1]) and 'since' not in json.dumps(o.get('guild', id=G1)[1]))
+
+# fb in usage
+fb0 = int(sql(f'select fallback from usage_daily where guild_id="{G1}"') or 0); a_before = int(sql(f'select answered from usage_daily where guild_id="{G1}"'))
+hub({'servers': S1, 'usage': {G1: {'a': 1, 'fb': 4}}}); hub({'servers': S1, 'usage': {G1: {'fb': 3}}})
+ok('usage fb opgeteld in kolom fallback, losse fb telt mee', sql(f'select fallback from usage_daily where guild_id="{G1}"') == str(fb0 + 7) and sql(f'select answered from usage_daily where guild_id="{G1}"') == str(a_before + 1))
+hub({'servers': S1, 'usage': {G1: {'fb': 999999999}}}); ok('fb wordt begrensd op 100000', sql(f'select fallback from usage_daily where guild_id="{G1}"') == str(fb0 + 7 + 100000))
+hub({'servers': S1, 'usage': {G1: {'fb': -5}}}); ok('negatieve fb telt niet', sql(f'select fallback from usage_daily where guild_id="{G1}"') == str(fb0 + 7 + 100000))
+sql(f'update usage_daily set fallback=7 where guild_id="{G1}"')
+ok('antwoorden via terugval tellen niet mee in het week- of daglimiet-aantal', o.get('guild', id=G1)[1]['usage']['today'] == a_before + 1 and o.get('guild', id=G1)[1]['usage']['fallback_today'] == 7)
+a3 = adm.get('admin')[1]
+ok('admin: servertabel heeft fallback van vandaag, stats.today zonder fallback', {g['id']: g['fallback'] for g in a3['guilds']}[G1] == 7 and a3['stats']['today'] == a_before + 1 + 0 + int(sql('select coalesce(sum(answered),0) from usage_daily where day=curdate() and guild_id<>"' + G1 + '"')), a3['stats'])
+
+# migratie van een v1-database
+sql(f'insert into usage_daily (day, guild_id, answered) values (curdate() - interval 1 day, "{G1}", 9) on duplicate key update answered = 9')
+sql('alter table usage_daily drop column fallback'); sql('update settings set v="1" where k="schema_version"')
+ok('voorbereiding: v1-tabel zonder kolom fallback', sql('select count(*) from information_schema.COLUMNS where TABLE_SCHEMA=database() and TABLE_NAME="usage_daily" and COLUMN_NAME="fallback"') == '0' and sql('select v from settings where k="schema_version"') == '1')
+st, jm = hub({'servers': S1, 'usage': {G1: {'a': 1, 'fb': 2}}})
+ok('v1-database migreert bij de eerstvolgende aanroep (kolom, versie 2, oude rijen intact)', st == 200 and sql('select count(*) from information_schema.COLUMNS where TABLE_SCHEMA=database() and TABLE_NAME="usage_daily" and COLUMN_NAME="fallback"') == '1'
+   and sql('select v from settings where k="schema_version"') == '2' and sql(f'select answered, fallback from usage_daily where guild_id="{G1}" and day=curdate()-interval 1 day') == '9\t0', (st, sql('select v from settings where k="schema_version"')))
+ok('na migratie werkt fb direct', sql(f'select fallback from usage_daily where guild_id="{G1}" and day=curdate()') == '2')
+sql('update settings set v="1" where k="schema_version"'); hub({'servers': S1})
+ok('migratie is herhaalbaar (kolom bestond al)', st == 200 and sql('select v from settings where k="schema_version"') == '2' and sql('select count(*) from information_schema.COLUMNS where TABLE_SCHEMA=database() and TABLE_NAME="usage_daily" and COLUMN_NAME="fallback"') == '1')
+sql('alter table usage_daily drop column fallback'); sql('update settings set v="1" where k="schema_version"')
+ok('v1-database migreert ook bij het openen van het paneel (api)', anon.get(B + 'api.php?a=me').status_code == 200 and sql('select count(*) from information_schema.COLUMNS where TABLE_SCHEMA=database() and TABLE_NAME="usage_daily" and COLUMN_NAME="fallback"') == '1')
+pv = requests.get(B + 'legal.php?p=privacy').text
+ok('privacytekst noemt de terugval, 24 uur en dat het geheugen niet in een database staat', all(t in pv for t in ('veelgestelde vragen', 'maximaal 24 uur', 'niet in een database bewaard')))
+ok('versie 0.2.0 in het paneel', anon.get(B + 'api.php?a=me').json()['version'] == '0.2.0')
+
 # ---------- meerdere domeinen ----------
 def login_url(host, proto='https'):
     r = requests.get(B + 'login.php', headers={'Host': host, 'X-Forwarded-Proto': proto}, allow_redirects=False)

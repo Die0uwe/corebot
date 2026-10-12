@@ -45,11 +45,18 @@ De hartslag bevat geen berichten of gebruikersnamen. Laat je `SBWEBUI_PING_URL` 
 
 ## Tests
 - `python test_bot.py`: 92 controles zonder Discord (router, limieten, instellingen van het paneel, commando's, alarmkanaal, rechten van kanalen, testopdrachten, de volledige berichtstroom met nepberichten).
+- `python test_v05.py`: 69 controles voor de hub-koppeling, publieke grenzen, ledenvoorkeuren, vergeten, de terugvallaag en de noodrem.
 - `python test_manager.py`: 29 controles van het starten, stoppen, crashbewaking en de afstandsbediening tegen een nepsite.
 - `xvfb-run -a python test_tray.py` (Linux) of `python test_tray.py` (met scherm): hulpfuncties en een rooktest van het venster.
 **Niet getest:** echt inloggen bij Discord, een echt Ollama-model, de tray op Windows (alleen onder Linux/Xvfb), de Windows-autostart (registry) en `pythonw` zonder venster. Probeer na het opstarten: "welke dag is het?", "wat is HTML?", "maak een html pagina met een knop" en "bouw een plugin voor mijn cms".
 
+## v0.5: corebot.info en terugval
+- `COREBOT_HUB_URL` en `COREBOT_HUB_SECRET` in `.env` (zie `.env.example`) koppelen de bot aan corebot.info. Elke minuut meldt de bot zijn servers, tellers en AI-status en haalt hij instellingen, FAQ en ledenvoorkeuren op (`hub.py`).
+- Zonder paneel én zonder `DISCORD_CHANNEL_ID` start de bot ook als alleen de hub is ingesteld.
+- Terugvalmodule: `fallback.py` (FAQ, antwoordgeheugen, vaste zinnen, noodrem). Tests: `python test_v05.py`.
+
 ## Bekende grenzen
+- Het antwoordgeheugen van de terugval staat alleen in het werkgeheugen (24 uur, max. 200 per server) en is weg na een herstart.
 - Het geheugen is kort (6 berichten per gebruiker, in het werkgeheugen) en weg na een herstart.
 - De router werkt op Nederlandse trefwoorden; een vraag in nette zinnen zonder die woorden kan erdoor komen. Dan houdt het model zich aan de regel, maar dat is minder streng dan de router.
 - Een klein model als qwen3:4b kan zich vergissen; de verwijzing zelf komt altijd van de router.

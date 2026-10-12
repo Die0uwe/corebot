@@ -21,6 +21,8 @@ const CB_MODES = ['chat', 'commands'];
 const CB_MAX_CHANNELS = 25;
 const CB_MAX_CHAN_PROFILES = 50;
 const CB_MAX_COMMANDS = 20;
+const CB_MAX_FAQ = 30;
+const CB_FALLBACK_KEYS = ['faq', 'cache', 'templates'];
 /** [laagste, hoogste, label] — strenger dan bij de eigen bot van de beheerder. */
 const CB_RANGES = [
     'cooldown' => [3, 600, 'Wachttijd'],
@@ -55,6 +57,43 @@ function cb_commands_clean(mixed $raw, string $where): array
     }
     if (count($cmds) > CB_MAX_COMMANDS) return [null, 'Maximaal ' . CB_MAX_COMMANDS . " commando's$where."];
     return [$cmds, ''];
+}
+
+/** Kleine letters, zonder leestekens en dubbele spaties: voor het opsporen van dubbele vragen. */
+function cb_faq_norm(string $q): string
+{
+    return trim((string)preg_replace('/[^\p{L}\p{N}]+/u', ' ', mb_strtolower($q)));
+}
+
+/** FAQ van een server: lijst van {q, a, on}. Geeft [lijst, ''] of [null, melding]. */
+function cb_faq_clean(mixed $raw): array
+{
+    $out = []; $seen = [];
+    foreach (is_array($raw) ? $raw : [] as $x) {
+        if (!is_array($x)) continue;
+        $q = trim((string)preg_replace('/\s+/u', ' ', str_replace(['<', '>'], '', (string)($x['q'] ?? ''))));
+        $a = trim(str_replace(['<', '>'], '', (string)($x['a'] ?? '')));
+        if ($q === '' && $a === '') continue;
+        $lbl = '"' . mb_substr($q, 0, 40) . (mb_strlen($q) > 40 ? '…' : '') . '"';
+        if ($q === '' || mb_strlen($q) > 120) return [null, 'Veelgestelde vragen: een vraag moet tussen 1 en 120 tekens zijn' . ($q === '' ? '.' : " ($lbl).")];
+        if ($a === '' || mb_strlen($a) > 600) return [null, "Veelgestelde vragen: het antwoord bij $lbl moet tussen 1 en 600 tekens zijn."];
+        $n = cb_faq_norm($q);
+        if ($n === '') return [null, "Veelgestelde vragen: $lbl bevat geen woorden."];
+        if (isset($seen[$n])) return [null, "Veelgestelde vragen: de vraag $lbl staat er dubbel in."];
+        $seen[$n] = 1;
+        $out[] = ['q' => $q, 'a' => $a, 'on' => !empty($x['on'])];
+    }
+    if (count($out) > CB_MAX_FAQ) return [null, 'Maximaal ' . CB_MAX_FAQ . ' veelgestelde vragen.'];
+    return [$out, ''];
+}
+
+/** Schakelaars voor de terugvallagen; ontbrekend betekent aan. */
+function cb_fallback_get(mixed $raw): array
+{
+    $raw = is_array($raw) ? $raw : [];
+    $o = [];
+    foreach (CB_FALLBACK_KEYS as $k) $o[$k] = !array_key_exists($k, $raw) || (bool)$raw[$k];
+    return $o;
 }
 
 /** Eén profiel (server of kanaal). Geeft [profiel, ''] of [null, melding]. */
@@ -95,7 +134,7 @@ function cb_profile_clean(array $in, bool $server, string $label): array
 
 function cb_config_default(): array
 {
-    return ['server' => new stdClass(), 'channels' => [], 'channel_cfg' => new stdClass(), 'allow_member_tone' => true];
+    return ['server' => new stdClass(), 'channels' => [], 'channel_cfg' => new stdClass(), 'allow_member_tone' => true, 'faq' => [], 'fallback' => cb_fallback_get(null)];
 }
 
 /** Bewaarde configuratie van een serverrij, aangevuld met standaardwaarden. Lege kaarten blijven objecten ({}). */
@@ -108,6 +147,8 @@ function cb_config_get(?array $row): array
         'channels' => array_values(array_filter((array)($j['channels'] ?? []), 'cb_is_snowflake')),
         'channel_cfg' => (is_array($j['channel_cfg'] ?? null) && $j['channel_cfg']) ? $j['channel_cfg'] : new stdClass(),
         'allow_member_tone' => !isset($j['allow_member_tone']) || (bool)$j['allow_member_tone'],
+        'faq' => cb_faq_clean($j['faq'] ?? [])[0] ?? [],
+        'fallback' => cb_fallback_get($j['fallback'] ?? null),
     ];
 }
 
@@ -137,11 +178,15 @@ function cb_config_clean(array $in, array $known, array $names = []): array
         if ($pp) $cc[$id] = $pp;
     }
     if (count($cc) > CB_MAX_CHAN_PROFILES) return [null, 'Maximaal ' . CB_MAX_CHAN_PROFILES . ' kanalen met eigen instellingen.'];
+    [$faq, $err] = cb_faq_clean($in['faq'] ?? []);
+    if ($faq === null) return [null, $err];
     return [[
         'server' => $server ?: new stdClass(),
         'channels' => $ids,
         'channel_cfg' => $cc ?: new stdClass(),
         'allow_member_tone' => !isset($in['allow_member_tone']) || (bool)$in['allow_member_tone'],
+        'faq' => $faq,
+        'fallback' => cb_fallback_get($in['fallback'] ?? null),
     ], ''];
 }
 
@@ -165,8 +210,8 @@ function cb_known_channels(string $gid): array
 
 function cb_usage_today(string $gid): array
 {
-    $r = q('select answered, limited, errors from usage_daily where day = curdate() and guild_id = ?', [$gid])->fetch();
-    return $r ? array_map('intval', $r) : ['answered' => 0, 'limited' => 0, 'errors' => 0];
+    $r = q('select answered, limited, errors, fallback from usage_daily where day = curdate() and guild_id = ?', [$gid])->fetch();
+    return $r ? array_map('intval', $r) : ['answered' => 0, 'limited' => 0, 'errors' => 0, 'fallback' => 0];
 }
 
 function cb_cap(array $row): int
@@ -194,6 +239,8 @@ function cb_effective(array $row): array
         'channels' => $conf['channels'],
         'channel_cfg' => $conf['channel_cfg'],
         'allow_member_tone' => $conf['allow_member_tone'],
+        'faq' => array_values(array_map(static fn ($f) => ['q' => $f['q'], 'a' => $f['a']], array_filter($conf['faq'], static fn ($f) => $f['on']))),
+        'fallback' => $conf['fallback'],
     ];
 }
 

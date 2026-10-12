@@ -42,7 +42,7 @@ HTML;
 <h2>Wat we bewaren</h2>
 <ul>
 <li><strong>Als je inlogt met Discord:</strong> je Discord-ID, je weergavenaam, de code van je avatar en de lijst van servers waar je lid van bent (naam, icoon en of je er beheerder bent). We vragen geen e-mailadres en bewaren geen Discord-toegangssleutel in de database.</li>
-<li><strong>Servers met de bot:</strong> naam, icoon, aantal leden, de kanalen (naam en ID) en de instellingen die een beheerder kiest: toon, botnaam, extra instructie, limieten, commando's en kanalen.</li>
+<li><strong>Servers met de bot:</strong> naam, icoon, aantal leden, de kanalen (naam en ID) en de instellingen die een beheerder kiest: toon, botnaam, extra instructie, limieten, commando's, veelgestelde vragen en kanalen.</li>
 <li><strong>Voorkeuren van leden (alleen als je ze zelf instelt):</strong> bijnaam, toon en of de bot onthoudt wat je zegt.</li>
 <li><strong>Tellers:</strong> per server per dag hoeveel antwoorden, afgeremde berichten en fouten. Alleen aantallen, geen berichten.</li>
 <li><strong>Logboek van wijzigingen:</strong> wie wanneer instellingen opsloeg, zonder de inhoud van je tekst. Bij het wissen van je gegevens wordt je koppeling met deze regels verbroken.</li>
@@ -52,6 +52,7 @@ HTML;
 <li>De bot leest alleen berichten in kanalen die een serverbeheerder heeft gekozen. In andere kanalen reageert hij niet.</li>
 <li>Een vraag in zo'n kanaal gaat samen met de instellingen van de server naar het AI-model dat op de eigen computer van de beheerder draait. Er gaat niets naar een externe AI-aanbieder, tenzij de beheerder dat zelf heeft ingesteld; dat staat dan hier vermeld.</li>
 <li>Berichten worden niet in een database of bestand opgeslagen. De laatste berichten per lid en kanaal staan alleen in het werkgeheugen van de bot (standaard maximaal 6 en nooit meer dan 10) en verdwijnen bij een herstart of als je ze laat wissen. Heb je geheugen uitgezet, dan onthoudt de bot niets van jou.</li>
+<li>Als de AI niet bereikbaar is, kan de bot antwoorden uit de veelgestelde vragen van de server, vaste antwoorden op groeten geven, of een recent antwoord op dezelfde vraag hergebruiken. Dat laatste gebeurt alleen in het werkgeheugen van de bot, maximaal 24 uur en per server. Dat geheugen verdwijnt bij een herstart en wordt niet in een database bewaard.</li>
 </ul>
 <h2>Jouw rechten</h2>
 <ul>

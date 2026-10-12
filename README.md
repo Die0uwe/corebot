@@ -24,6 +24,10 @@ Discord  <--->  bot (pc)  --ondertekend (HMAC)-->  site/hub.php  <---  paneel (l
 - Gebruikers kiezen nooit een model. Modellen, schorsing en daglimieten zijn alleen voor de beheerder (Platform).
 - SBWebUI blijft los en alleen voor de beheerder. Eén Discord-identiteit, maar corebot-gebruikers krijgen daar nooit een account.
 
+### Als de AI plat ligt
+
+De bot antwoordt dan toch, zonder model: eerst de FAQ van de server, dan een recent antwoord op bijna dezelfde vraag (alleen in het werkgeheugen, 24 uur), dan een vaste zin per toon voor korte groeten en vragen als "ben je er nog?", en anders een eerlijk bericht dat de AI er niet is (per lid max. eens per 10 minuten, daarna een ⏳-reactie). Na 3 mislukte aanroepen gaat de noodrem dicht (30 s, dan 60/120/300 s) zodat leden niet op time-outs wachten. Elke server kan de drie lagen apart uitzetten. Het Platform-scherm toont of de AI aan staat.
+
 Zie `docs/besluiten.md` voor de vastgelegde keuzes (waaronder: AI altijd via SBWebUI).
 
 ## Installeren (site)
@@ -40,7 +44,8 @@ Meer in `site/LEES-MIJ.txt`. Domein verhuizen: zet alle domeinen in `allowed_hos
 ```
 cd tests && ./cb_up.sh && python3 t100.py     # API en hub (nep-Discord)
 ./cb_up.sh && python3 t101.py                 # browser (Playwright)
-cd ../bot && python3 test_bot.py              # bot
+cd ../bot && python3 test_bot.py && python3 test_v05.py   # bot (oude + v0.5)
+cd ../tests && ./cb_up.sh && python3 t102.py  # contract bot <-> echte site
 ```
 
 Vereist: php 8 (pdo_mysql, curl), MariaDB, python3 met `requests` en `playwright`.

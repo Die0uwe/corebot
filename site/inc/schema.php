@@ -67,6 +67,7 @@ function install_schema(PDO $pdo): void
             answered int unsigned not null default 0,
             limited int unsigned not null default 0,
             errors int unsigned not null default 0,
+            fallback int unsigned not null default 0,
             primary key (day, guild_id)
         ) $opt",
         // Leden die hun gegevens lieten wissen: de bot wist ook zijn geheugen en bevestigt dat.
@@ -92,4 +93,13 @@ function install_schema(PDO $pdo): void
         ) $opt",
     ];
     foreach ($tables as $sql) $pdo->exec($sql);
+    migrate_schema($pdo);
+}
+
+/** Schema 1 -> 2: kolom usage_daily.fallback. Controle via information_schema (geen "add column if not exists": Strato kan MySQL draaien). */
+function migrate_schema(PDO $pdo): void
+{
+    $st = $pdo->prepare('select count(*) from information_schema.COLUMNS where TABLE_SCHEMA = database() and TABLE_NAME = ? and COLUMN_NAME = ?');
+    $st->execute(['usage_daily', 'fallback']);
+    if ((int)$st->fetchColumn() === 0) $pdo->exec('alter table usage_daily add column fallback int unsigned not null default 0');
 }

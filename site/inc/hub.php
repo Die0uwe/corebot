@@ -33,6 +33,14 @@ function hub_models_allowed(): array
     return array_values(array_unique($out));
 }
 
+/** Status van de AI volgens de bot: {up: bool, since: unix-seconden, fails: int}. Streng: bij elke afwijking null (negeren). */
+function hub_ai_clean(mixed $ai, int $now): ?array
+{
+    if (!is_array($ai) || !is_bool($ai['up'] ?? null) || !is_int($ai['since'] ?? null) || !is_int($ai['fails'] ?? null)) return null;
+    if ($ai['since'] < 1000000000 || $ai['since'] > $now + 300 || $ai['fails'] < 0 || $ai['fails'] > 1000000) return null;
+    return ['up' => $ai['up'], 'since' => $ai['since'], 'fails' => $ai['fails']];
+}
+
 /** Verwerkt één sync van de bot en geeft het antwoord terug. */
 function hub_sync(array $d, int $now): array
 {
@@ -71,9 +79,10 @@ function hub_sync(array $d, int $now): array
             $gid = (string)$gid;
             if (!cb_is_snowflake($gid) || !is_array($u)) continue;
             $a = max(0, min(100000, (int)($u['a'] ?? 0))); $l = max(0, min(100000, (int)($u['l'] ?? 0))); $e = max(0, min(100000, (int)($u['e'] ?? 0)));
-            if ($a + $l + $e === 0) continue;
-            q('insert into usage_daily (day, guild_id, answered, limited, errors) select curdate(), guild_id, ?, ?, ? from guilds where guild_id = ?
-               on duplicate key update answered = answered + values(answered), limited = limited + values(limited), errors = errors + values(errors)', [$a, $l, $e, $gid]);
+            $fb = max(0, min(100000, (int)($u['fb'] ?? 0)));
+            if ($a + $l + $e + $fb === 0) continue;
+            q('insert into usage_daily (day, guild_id, answered, limited, errors, fallback) select curdate(), guild_id, ?, ?, ?, ? from guilds where guild_id = ?
+               on duplicate key update answered = answered + values(answered), limited = limited + values(limited), errors = errors + values(errors), fallback = fallback + values(fallback)', [$a, $l, $e, $fb, $gid]);
         }
         $ack = array_values(array_filter(array_slice((array)($d['ack_forget'] ?? []), 0, 200), 'cb_is_snowflake'));
         foreach ($ack as $id) q('delete from forget_queue where discord_id = ?', [$id]);
@@ -105,7 +114,10 @@ function hub_sync(array $d, int $now): array
 
     $prev = json_decode(setting('hub_last'), true);
     $appId = preg_match('/^\d{15,22}$/', (string)($d['app_id'] ?? '')) === 1 ? (string)$d['app_id'] : (string)($prev['app_id'] ?? '');
-    set_setting('hub_last', json_encode(['at' => $now, 'version' => mb_substr((string)($d['version'] ?? ''), 0, 20), 'app_id' => $appId, 'new' => $newOnes], JSON_UNESCAPED_UNICODE));
+    $ai = hub_ai_clean($d['ai'] ?? null, $now) ?? (is_array($prev['ai'] ?? null) ? $prev['ai'] : null);
+    $last = ['at' => $now, 'version' => mb_substr((string)($d['version'] ?? ''), 0, 20), 'app_id' => $appId, 'new' => $newOnes];
+    if ($ai !== null) $last['ai'] = $ai;
+    set_setting('hub_last', json_encode($last, JSON_UNESCAPED_UNICODE));
     return [
         'ok' => true,
         'guilds' => $guilds ?: new stdClass(),
