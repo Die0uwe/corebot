@@ -1,0 +1,29 @@
+CoreBot (corebot.info) v0.1.1 - installatie
+
+Installatiecode: staat in de release-zip (inc/install_code.php), niet in de repo.
+
+1. Discord Developer Portal (https://discord.com/developers/applications)
+   - Gebruik de bestaande bot-applicatie of maak een nieuwe. Noteer de Application ID (General Information)
+     en de Client Secret (OAuth2 > Reset Secret). De Client Secret plak je alleen in de installer.
+   - OAuth2 > Redirects: voeg BEIDE toe (nu en straks):
+       https://corebot.scriptspace.nl/callback.php
+       https://corebot.info/callback.php
+   - Bot: Message Content Intent aan (zoals nu bij de eigen bot).
+2. Strato: upload ALLE bestanden uit deze zip naar de map van corebot.scriptspace.nl
+   (ook de verborgen .htaccess en inc/.htaccess). Gebruik een EIGEN lege database (niet die van SBWebUI).
+3. Open https://corebot.scriptspace.nl/install.php, vul de installatiecode in, bij Domeinen: corebot.scriptspace.nl,corebot.info
+   (beide mogen er al in staan), de databasegegevens, de Discord-gegevens
+   en jouw Discord-ID. Het databasewachtwoord typ je daar zelf in; het komt alleen in config.php op de server.
+4. De installer verwijdert zichzelf. Controleer dat install.php en inc/install_code.php weg zijn.
+5. Log in met Discord. Onder Platform > Bot-verbinding vind je het hub-adres en de bot-sleutel.
+   (Stap 2 van het plan: de bot op je pc haalt daar zijn instellingen op. Dat is nog niet gebouwd.)
+
+Als corebot.info klaar is: koppel het domein in Strato aan DEZELFDE map. Beide adressen werken dan tegelijk
+(zelfde database, zelfde config). Wil je daarna alleen corebot.info, zet in config.php op de server:
+   'canonical_host' => 'corebot.info',
+Dan sturen alle andere domeinen door (301). Sessies zijn per domein: na de overstap log je één keer opnieuw in.
+
+SBWebUI blijft los: zet daar Registratie op "gesloten" of "alleen met uitnodiging", zodat corebot-gebruikers
+nooit een SBWebUI-account krijgen. Jouw Discord-ID staat in config.php als beheerder van CoreBot.
+
+Niet getest met echte Discord, echte Strato of een browser buiten de testomgeving.

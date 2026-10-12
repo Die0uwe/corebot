@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SBWebUI Discord-bot: installatiehulp</title>
+<style>
+:root{--bg:#05060a;--panel:#0a0c12;--card:#10131a;--line:#1a1e2a;--line2:#262b3c;--text:#c8c6d4;--mute:#8a8798;--gold:#8f88b8;--on:#05060a;--ok:#3dcc7a;--bad:#ef6b78;--warn:#f0b34a;--code:#0a0c12;color-scheme:dark}
+:root[data-theme="light"]{--bg:#f4f3f8;--panel:#fff;--card:#fff;--line:#d9d6e4;--line2:#bfbbd0;--text:#1d1b2a;--mute:#5b5870;--gold:#5f5890;--on:#fff;--ok:#13804a;--bad:#c0392b;--warn:#8a6100;--code:#eceaf4;color-scheme:light}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 "Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1,h2,header.top strong{font-family:Syne,"Instrument Sans","Segoe UI",system-ui,sans-serif}
+a{color:var(--gold)}
+code,pre,kbd{font-family:ui-monospace,Consolas,"JetBrains Mono",monospace}
+code{background:var(--code);padding:.1em .35em;border-radius:5px;font-size:.92em}
+kbd{background:var(--code);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:.05em .4em;font-size:.85em}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+header.top{border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
+header.top .wrap{display:flex;align-items:center;gap:12px;padding:10px 16px;flex-wrap:wrap}
+header.top strong{color:var(--gold);letter-spacing:.02em}
+header.top nav{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+header.top nav a{color:var(--mute);text-decoration:none;padding:4px 9px;border-radius:7px;font-size:.88rem}
+header.top nav a:hover{background:var(--card);color:var(--text)}
+button,.btn{font:inherit;cursor:pointer;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+button:hover{border-color:var(--gold)}
+.step-ok{color:var(--ok)}
+button.gold{background:var(--gold);color:var(--on);border-color:var(--gold);font-weight:600}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.hero{padding:34px 0 10px}
+.hero h1{margin:0 0 6px;font-size:clamp(1.6rem,4vw,2.3rem);line-height:1.2}
+.hero p{color:var(--mute);max-width:70ch;margin:.3rem 0}
+.tag{display:inline-block;border:1px solid var(--line);border-radius:99px;padding:1px 10px;font-size:.78rem;color:var(--mute);margin-right:6px}
+section{padding:26px 0 6px}
+h2{font-size:1.4rem;margin:0 0 12px;display:flex;align-items:center;gap:10px}
+h2 .n{background:var(--gold);color:var(--on);border-radius:99px;min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:.95rem;font-weight:700}
+h3{font-size:1.05rem;margin:18px 0 6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.note,.warn,.bad,.ok{border-left:4px solid var(--mute);background:var(--card);border-radius:0 10px 10px 0;padding:10px 14px;margin:12px 0}
+.warn{border-color:var(--warn)}.bad{border-color:var(--bad)}.ok{border-color:var(--ok)}.note{border-color:var(--gold)}
+.note b:first-child,.warn b:first-child,.bad b:first-child,.ok b:first-child{margin-right:4px}
+pre{position:relative;background:var(--code);border:1px solid var(--line);border-radius:10px;padding:12px 14px;overflow:auto;margin:10px 0;font-size:.88rem;line-height:1.5}
+pre .cp{position:absolute;top:6px;right:6px;font-size:.75rem;padding:2px 8px;opacity:.85}
+.steps{list-style:none;padding:0;margin:0}
+.steps li{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);margin:10px 0}
+.steps li.done{opacity:.62}
+.steps li.done .t{text-decoration:line-through}
+.steps input[type=checkbox]{width:22px;height:22px;margin-top:3px;accent-color:var(--gold);flex:none}
+.steps li>div{min-width:0;overflow-wrap:anywhere}
+.steps .t{font-weight:600}
+.steps .b{color:var(--mute);margin-top:4px}
+.steps .b p{margin:.4rem 0}
+.prog{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0 2px}
+.prog>i{display:block;height:100%;width:0;background:var(--gold);transition:width .25s}
+table{border-collapse:collapse;width:100%;font-size:.93rem}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--panel);color:var(--mute);font-weight:600}
+.tablewrap{overflow-x:auto}
+details{background:var(--card);border:1px solid var(--line);border-radius:10px;margin:8px 0;padding:2px 14px}
+summary{cursor:pointer;padding:10px 0;font-weight:600}
+details[open] summary{border-bottom:1px solid var(--line);margin-bottom:8px}
+label{display:block;font-size:.85rem;color:var(--mute);margin:10px 0 3px}
+input[type=text],input[type=password],input[type=url],select{width:100%;background:var(--code);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 10px;font:inherit}
+.row{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.flow span.box{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-size:.88rem}
+.flow span.arr{color:var(--gold)}
+footer{border-top:1px solid var(--line);margin-top:40px;padding:20px 0 40px;color:var(--mute);font-size:.88rem}
+.sr{position:absolute;left:-9999px}
+@media (max-width:600px){header.top nav{display:none}.card{padding:14px}}
+@media print{header.top,button,.cp{display:none!important}body{background:#fff;color:#000}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <strong>SBWebUI Discord-bot</strong>
+    <nav aria-label="Onderdelen">
+      <a href="#overzicht">Overzicht</a><a href="#voor">Vooraf</a><a href="#stappen">Stappen</a><a href="#env">.env maken</a>
+      <a href="#rechten">Rechten</a><a href="#test">Testen</a><a href="#paneel">Beheerpaneel</a><a href="#tray">Tray</a><a href="#fout">Problemen</a><a href="#instel">Instellingen</a><a href="#veilig">Veiligheid</a>
+    </nav>
+    <button id="themeBtn" type="button" aria-label="Wissel tussen donker en licht">Licht/donker</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+<div class="hero">
+  <span class="tag">tools/discord-bot</span><span class="tag">bot v0.3.0</span><span class="tag">tray-starter v0.1.0</span><span class="tag">draait op je pc</span>
+  <h1>Installatiehulp voor de SBWebUI Discord-bot</h1>
+  <p>Een bot die in <b>de kanalen die jij kiest</b> vragen beantwoordt met je eigen Ollama. Je kiest kanalen, limieten en een apart kanaal voor foutmeldingen in het beheerpaneel van de site, en start en stopt de bot met een icoon naast de klok, zonder terminal. Deze pagina leidt je van niets naar een draaiende bot: afvinklijst, een hulpmiddel dat je <code>.env</code> opbouwt, de Discord-rechten die nodig zijn, testvragen en veelvoorkomende fouten.</p>
+  <p>De pagina staat los van de site: ze doet geen verbindingen, je kunt ze offline openen. Je afvinkvoortgang blijft alleen in deze browser bewaard.</p>
+</div>
+
+<section id="overzicht">
+  <h2>Wat de bot doet</h2>
+  <div class="flow" aria-label="Berichtstroom">
+    <span class="box">Bericht in een gekozen kanaal</span><span class="arr">→</span>
+    <span class="box">Limieten (instelbaar)</span><span class="arr">→</span><span class="box">!commando?</span><span class="arr">→</span>
+    <span class="box">Router (zonder model)</span><span class="arr">→</span>
+    <span class="box">vaste verwijzing <i>of</i> Ollama-antwoord</span>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Je vraagt…</th><th>De bot doet…</th></tr></thead>
+    <tbody>
+      <tr><td>Gewone vraag of gesprek ("welke dag is het?")</td><td>Antwoordt zelf via Ollama (standaard <code>qwen3:4b</code>), kort, in het Nederlands, met datum en tijd</td></tr>
+      <tr><td>HTML, CSS, code of een website laten maken</td><td>Schrijft die niet; verwijst naar <a href="https://scriptspace.nl">https://scriptspace.nl</a></td></tr>
+      <tr><td>CMS-werk ("bouw een plugin voor mijn cms")</td><td>Verwijst naar <a href="https://cms.scriptspace.nl">https://cms.scriptspace.nl</a></td></tr>
+      <tr><td>Uitleg ("wat is HTML?")</td><td>Beantwoordt dit wel, zonder code te schrijven</td></tr>
+      <tr><td><code>!regels</code> (een eigen commando uit het paneel)</td><td>Stuurt het vaste antwoord. <code>!help</code> toont de lijst</td></tr>
+      <tr><td>Een bericht in een ander kanaal, een DM, of van een andere bot</td><td>Negeert het (en telt het, zodat je in het paneel een verkeerd kanaal ziet)</td></tr>
+    </tbody>
+  </table></div>
+  <p>De verwijzing komt <b>altijd uit vaste tekst</b>: een router zonder model beslist vooraf. De opdracht aan het model is alleen het vangnet voor wat de router niet herkent. De bot pingt nooit iemand en knipt lange antwoorden onder Discords 2000 tekens.</p>
+  <div class="note"><b>Waarom op je pc?</b> Om gewone berichten te lezen moet de bot ingelogd blijven bij Discord. Dat vraagt een proces dat de hele tijd draait en kan niet op Strato. Op je pc staat Ollama al, dus er is geen tunnel nodig. De bot antwoordt alleen als je pc en de tray-starter aan staan.</div>
+</section>
+
+<section id="voor">
+  <h2>Vooraf nodig</h2>
+  <div class="grid">
+    <div class="card"><b>Python 3.10 of nieuwer</b><p>Controle in PowerShell:</p><pre><code>python --version</code></pre><p>Niet gevonden? Installeer Python van python.org en vink <i>Add python.exe to PATH</i> aan.</p></div>
+    <div class="card"><b>Ollama met een model</b><p>Controle:</p><pre><code>ollama list</code></pre><p>Staat <code>qwen3:4b</code> er niet bij, haal het op met <code>ollama pull qwen3:4b</code>, of kies een model dat er wel staat.</p></div>
+    <div class="card"><b>Een Discord-server van jou</b><p>Je moet er beheerder zijn om een bot toe te voegen en een kanaal te maken.</p></div>
+    <div class="card"><b>De map van de bot</b><p>Uit <code>sbwebui-discord-bot.zip</code> of uit de repo: <code>tools/discord-bot/</code>. Pak uit op een vaste plek, bijvoorbeeld <code>C:\SERVERS\DIEOUWE-AI\SBWEBUI\tools\discord-bot</code>.</p></div>
+  </div>
+</section>
+
+<section id="stappen">
+  <h2><span class="n">8</span> Stappen</h2>
+  <p>Vink af wat klaar is. <span id="progTxt">0 van 8</span></p>
+  <div class="prog" aria-hidden="true"><i id="progBar"></i></div>
+  <ol class="steps" id="steps">
+
+    <li data-s="1"><input type="checkbox" id="s1" aria-labelledby="t1"><div><div class="t" id="t1">1. Applicatie en token maken</div><div class="b">
+      <p>Ga naar <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">discord.com/developers/applications</a> → <b>New Application</b> → geef een naam (bijv. "SB AI").</p>
+      <p>Kies links <b>Bot</b> → <b>Reset Token</b> → kopieer het token en bewaar het even (je ziet het maar één keer).</p>
+      <div class="warn"><b>Let op:</b> het token is een wachtwoord. Zet het alleen in <code>.env</code>, nooit in een chat, screenshot of git.</div>
+    </div></div></li>
+
+    <li data-s="2"><input type="checkbox" id="s2" aria-labelledby="t2"><div><div class="t" id="t2">2. Message Content Intent aanzetten</div><div class="b">
+      <p>Zelfde tabblad <b>Bot</b>, onder <b>Privileged Gateway Intents</b>: zet <b>Message Content Intent</b> aan en sla op.</p>
+      <p>Zonder dit ziet de bot berichten zonder tekst. Het paneel waarschuwt dan ("berichten zonder tekst").</p>
+    </div></div></li>
+
+    <li data-s="3"><input type="checkbox" id="s3" aria-labelledby="t3"><div><div class="t" id="t3">3. Bot toevoegen aan je server</div><div class="b">
+      <p><b>OAuth2 → URL Generator</b>. Scope: <code>bot</code>. Rechten: <b>View Channels</b>, <b>Send Messages</b>, <b>Read Message History</b>. Open de URL onderaan, kies je server en bevestig.</p>
+      <p>De bot staat nu in je ledenlijst, nog offline.</p>
+    </div></div></li>
+
+    <li data-s="4"><input type="checkbox" id="s4" aria-labelledby="t4"><div><div class="t" id="t4">4. Kanalen klaarzetten (let op bij privékanalen)</div><div class="b">
+      <p>Maak een antwoordkanaal, bijvoorbeeld <code>#vraag-de-ai</code>, en eventueel een <b>privé</b>kanaal voor foutmeldingen (<code>#bot-alarmen</code>).</p>
+      <p><b>Privékanaal?</b> Voeg de bot er zelf aan toe, anders ziet hij het niet: zie <a href="#rechten">Rechten</a>. Dit is de meest voorkomende reden dat een bot "niks doet" in een admin-testroom.</p>
+    </div></div></li>
+
+    <li data-s="5"><input type="checkbox" id="s5" aria-labelledby="t5"><div><div class="t" id="t5">5. Koppeling met het paneel maken</div><div class="b">
+      <p>Open SBWebUI → <b>Beheer → Discord-bot</b> → onderaan bij <b>Verbinding</b> op <b>Geheim maken</b>. Kopieer het adres en het geheim (je ziet het geheim maar één keer).</p>
+      <p>Hiermee kies je later kanalen, instellingen en alarmen in het paneel, en werken Start en Stop vanaf de site.</p>
+    </div></div></li>
+
+    <li data-s="6"><input type="checkbox" id="s6" aria-labelledby="t6"><div><div class="t" id="t6">6. <code>.env</code> invullen</div><div class="b">
+      <p>Kopieer <code>.env.example</code> naar <code>.env</code> en vul in, of gebruik het hulpmiddel <a href="#env">hieronder</a>. Verplicht: <code>DISCORD_TOKEN</code>, <code>SBWEBUI_PING_URL</code> en <code>SBWEBUI_BOT_SECRET</code>. <code>OLLAMA_MODEL</code> moet een naam zijn die je bij <code>ollama list</code> ziet. Waarden zonder aanhalingstekens.</p>
+      <p><code>DISCORD_CHANNEL_ID</code> is nu optioneel: de kanalen kies je in het paneel. Zonder koppeling met het paneel heb je het wel nodig.</p>
+      <p>Windows verbergt soms de bestandsextensie; het bestand moet echt <code>.env</code> heten, niet <code>.env.txt</code>. Heb je al een <code>.env</code>? Behoud die en voeg alleen de twee paneelregels toe.</p>
+    </div></div></li>
+
+    <li data-s="7"><input type="checkbox" id="s7" aria-labelledby="t7"><div><div class="t" id="t7">7. Tray-starter starten</div><div class="b">
+      <p>Dubbelklik <code>start-tray.bat</code>. De eerste keer maakt het een eigen Python-omgeving (<code>.venv</code>) en installeert <code>discord.py</code>, <code>customtkinter</code>, <code>pystray</code> en wat andere onderdelen; dat duurt even. Daarna verdwijnt het zwarte venster en verschijnt een icoon naast de klok. De bot start meteen.</p>
+      <p>Dubbelklik op het icoon om het venster te openen: Start, Stop, Herstart en het logboek. Zie <a href="#tray">Tray-starter</a>.</p>
+      <div class="note"><b>Liever met venster?</b> <code>start-bot.bat</code> blijft werken, maar start nooit allebei: dan stopt de tweede met een melding (anders zou elke vraag dubbel beantwoord worden).</div>
+    </div></div></li>
+
+    <li data-s="8"><input type="checkbox" id="s8" aria-labelledby="t8"><div><div class="t" id="t8">8. Kanaal kiezen in het paneel</div><div class="b">
+      <p>Beheer → Discord-bot → <b>Waar antwoordt de bot?</b>. Vink je kanaal aan, klik <b>Opslaan</b> (balk onderaan) en klik <b>Test</b> bij dat kanaal. Binnen 30 seconden staat er een testbericht in Discord.</p>
+      <p>Staat je kanaal niet in de lijst? Dan ziet de bot het niet: geef hem rechten (stap 4) en wacht 30 seconden.</p>
+    </div></div></li>
+  </ol>
+  <button type="button" id="resetSteps">Afvinklijst wissen</button>
+</section>
+
+<section id="rechten">
+  <h2>Wat moet er in Discord staan?</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Waar</th><th>Wat</th><th>Waarom</th></tr></thead>
+    <tbody>
+      <tr><td>Developer Portal → Bot</td><td><b>Message Content Intent</b> aan</td><td>Zonder dit leest de bot geen berichttekst</td></tr>
+      <tr><td>Server (uitnodiging)</td><td>View Channels, Send Messages, Read Message History</td><td>Meer is niet nodig; geen beheerder maken</td></tr>
+      <tr><td>Elk <b>privé</b>kanaal (ook de admin-testroom)</td><td>Kanaal bewerken → Rechten → <b>Rol of lid toevoegen</b> → de bot, met die drie rechten op ✓</td><td>Een privékanaal is voor @everyone verborgen; de bot moet er apart bij</td></tr>
+      <tr><td>Alarmkanaal</td><td>Privé: alleen beheerders en de bot, dezelfde drie rechten voor de bot</td><td>De bot stuurt geen alarmen naar een kanaal dat iedereen ziet</td></tr>
+      <tr><td>Later (slash-commando's)</td><td>Scope <code>applications.commands</code> bij de uitnodiging</td><td>Nog niet gebouwd; nu werken <code>!commando's</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="ok"><b>Controle in het paneel:</b> bij elk kanaal staan <i>zien · schrijven · lezen</i> met een vinkje of kruis. Ontbreekt een recht, dan staat er bovenaan een waarschuwing in gewone taal.</div>
+  <div class="note"><b>Niet in de lijst?</b> Een kanaal dat de bot niet kan zien, verschijnt niet. Plak dan het ID onder de lijst; het staat dan bij "Ingesteld, maar niet zichtbaar voor de bot" tot je rechten hebt gegeven.</div>
+</section>
+
+<section id="env">
+  <h2>Hulpmiddel: <code>.env</code> opbouwen</h2>
+  <p>Vul in en kopieer het resultaat naar je <code>.env</code>. Alles blijft in je browser; er wordt niets verstuurd.</p>
+  <div class="card">
+    <div class="row">
+      <div><label for="fTok">Discord-token (alleen op je eigen pc invullen)</label><input type="password" id="fTok" autocomplete="off" spellcheck="false"></div>
+      <div><label for="fCh">Kanaal-ID (optioneel als je het paneel gebruikt)</label><input type="text" id="fCh" inputmode="numeric" placeholder="bijv. 123456789012345678"></div>
+      <div><label for="fName">Naam van de bot</label><input type="text" id="fName" value="SB AI"></div>
+      <div><label for="fModel">Ollama-model</label><input type="text" id="fModel" value="qwen3:4b"></div>
+      <div><label for="fBase">Ollama-adres</label><input type="url" id="fBase" value="http://127.0.0.1:11434"></div>
+      <div><label for="fTz">Tijdzone</label><input type="text" id="fTz" value="Europe/Amsterdam"></div>
+      <div><label for="fPing">Paneel-adres (uit Beheer → Discord-bot → Verbinding)</label><input type="url" id="fPing" placeholder="https://sbwebui.scriptspace.nl/bot_ping.php"></div>
+      <div><label for="fSec">Paneel-geheim</label><input type="password" id="fSec" autocomplete="off" spellcheck="false"></div>
+      <div><label for="fCool">Cooldown (seconden)</label><input type="text" id="fCool" value="8" inputmode="numeric"></div>
+      <div><label for="fHour">Max. berichten per uur per gebruiker</label><input type="text" id="fHour" value="20" inputmode="numeric"></div>
+    </div>
+    <div id="envMsg" class="warn" hidden></div>
+    <pre id="envOut"><button class="cp" type="button" data-copy="envOut">Kopieer</button><code></code></pre>
+    <button type="button" class="gold" id="envDl">Download als .env</button>
+    <button type="button" id="envHide">Token verbergen/tonen</button>
+    <p style="color:var(--mute);font-size:.88rem">De download heet <code>.env</code>. Geeft je browser er een andere naam aan, hernoem het dan. Zet het bestand in dezelfde map als <code>bot.py</code>.</p>
+  </div>
+</section>
+
+<section id="test">
+  <h2>Testen na het opstarten</h2>
+  <p>Druk eerst in het paneel op <b>Test</b> bij je kanaal (stuurt een testbericht). Stuur daarna in het gekozen kanaal deze vier berichten. Wacht na elk bericht ruim 8 seconden (cooldown). Het eerste antwoord kan langer duren omdat Ollama het model eerst laadt.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Typ in het kanaal</th><th>Verwacht</th><th>Gelukt?</th></tr></thead>
+    <tbody>
+      <tr><td><code>welke dag is het?</code></td><td>Juiste dag, datum en tijd, kort en Nederlands</td><td><input type="checkbox" class="tchk" aria-label="Test 1 gelukt"></td></tr>
+      <tr><td><code>wat is HTML?</code></td><td>Uitleg zonder code</td><td><input type="checkbox" class="tchk" aria-label="Test 2 gelukt"></td></tr>
+      <tr><td><code>maak een html pagina met een knop</code></td><td>Geen code; verwijzing naar scriptspace.nl</td><td><input type="checkbox" class="tchk" aria-label="Test 3 gelukt"></td></tr>
+      <tr><td><code>bouw een plugin voor mijn cms</code></td><td>Verwijzing naar cms.scriptspace.nl</td><td><input type="checkbox" class="tchk" aria-label="Test 4 gelukt"></td></tr>
+    </tbody>
+  </table></div>
+  <h3>Extra controles</h3>
+  <ul>
+    <li>Typ iets in een <b>ander kanaal</b>: de bot moet zwijgen. In het paneel staat onder Activiteit hoeveel berichten hij negeerde, per kanaal.</li>
+    <li>Druk in het paneel op <b>Stuur testalarm</b>: er moet een bericht in het alarmkanaal komen, en nergens anders.</li>
+    <li>Stuur twee berichten snel achter elkaar: het tweede wordt afgeremd (cooldown).</li>
+    <li>Zet Ollama uit en vraag iets: je moet een nette foutmelding krijgen, geen crash.</li>
+  </ul>
+  <h3>Zonder Discord: de ingebouwde test</h3>
+  <p>Voor je de bot start kun je de logica controleren (geen internet of Discord nodig):</p>
+<pre><code>cd C:\SERVERS\DIEOUWE-AI\SBWEBUI\tools\discord-bot
+.venv\Scripts\python test_bot.py
+.venv\Scripts\python test_manager.py</code></pre>
+  <p>Dat zijn 92 en 29 controles. De tray zelf is onder Linux met een virtueel scherm getest, niet op Windows.</p>
+  <div class="note"><b>Eerlijk:</b> echt inloggen bij Discord en een echt Ollama-model zijn niet door ons getest. Jouw eerste start is de echte controle. Meld wat je ziet, dan wordt dit document aangevuld.</div>
+</section>
+
+<section id="paneel">
+  <h2>Het beheerpaneel</h2>
+  <p>Beheer → Discord-bot in SBWebUI, in dezelfde donkere stijl als de site. Wijzigingen werken binnen 30 seconden, zonder herstart van de bot.</p>
+  <div class="grid">
+    <div class="card"><b>Status</b><p>Online of offline, laatste hartslag, uptime, Discord-latency, of Ollama bereikbaar is, en of de bot je laatste instellingen heeft overgenomen. Met <b>Start</b>, <b>Stop</b>, <b>Herstart</b> (via de tray-starter) en <b>Pauzeren</b>.</p></div>
+    <div class="card"><b>Waar antwoordt de bot?</b><p>Een vinkje per kanaal, met per kanaal of de bot mag zien, schrijven en lezen, plus een Test-knop. Een kanaal-ID kun je ook plakken.</p></div>
+    <div class="card"><b>Foutmeldingen in een apart kanaal</b><p>Kies een <b>privé</b>kanaal en de soorten alarm: Ollama, fouten, site, rechten, instellingen, start. Openbare kanalen zijn niet kiesbaar. Elk alarm hooguit eens per 10 minuten (rechten en instellingen eens per uur).</p></div>
+    <div class="card"><b>Instellingen en commando's</b><p>Naam, model (lijst uit Ollama), wachttijd, berichten per uur, lengte, geheugen, adressen voor doorverwijzing, extra instructie, en eigen <code>!commando's</code> met een vast antwoord.</p></div>
+    <div class="card"><b>Activiteit en statistiek</b><p>De laatste 40 gebeurtenissen (zonder berichtinhoud of namen) en tellers per dag, week en maand, inclusief genegeerde berichten.</p></div>
+    <div class="card"><b>Let op-kader</b><p>Bovenaan staat in gewone taal wat er niet klopt: bot offline, Ollama weg, kanaal onzichtbaar, recht ontbreekt, alarmkanaal openbaar, Message Content Intent uit.</p></div>
+  </div>
+  <p>De hartslag bevat <b>geen berichten of gebruikersnamen</b>. Hij is ondertekend met het geheim en maximaal 5 minuten geldig, dus de klok van je pc moet kloppen.</p>
+  <div class="note"><b>Nog niet getest:</b> de koppeling met een echte Strato-site en een echte Discord-verbinding (lokaal wel, tegen een testsite en nepberichten). Je eerste start is de echte controle.</div>
+</section>
+
+<section id="tray">
+  <h2>Tray-starter: geen terminal meer</h2>
+  <p>Zoals bij CurseBot. <code>start-tray.bat</code> start <code>tray.py</code> zonder venster; je ziet een icoon naast de klok. De bot draait als apart, onzichtbaar proces.</p>
+  <div class="grid">
+    <div class="card"><b>Venster</b><p>Status, Start / Stop / Herstart, <i>Open paneel</i> en het logboek van de bot. Het kruisje en minimaliseren sturen het venster naar het systeemvak; de bot blijft draaien.</p></div>
+    <div class="card"><b>Icoon</b><p>Dubbelklik opent het venster. Rechtsklik: Openen, Start, Stop, Herstart, <b>Afsluiten</b>. Afsluiten stopt ook de bot. Groene stip: bot draait. Rode stip: gestopt.</p></div>
+    <div class="card"><b>Vanuit de site</b><p>De knoppen Start / Stop / Herstart in het paneel werken via de tray-starter (hij meldt zich elke 15 seconden). Is hij niet verbonden, dan zijn de knoppen grijs en staat er waarom.</p></div>
+    <div class="card"><b>Bij een crash</b><p>De starter herstart de bot na 3 seconden. Crasht hij 3 keer binnen 5 minuten, dan blijft hij gestopt en staat de reden in het logboek (<code>bot.log</code>); meestal een fout in <code>.env</code>.</p></div>
+    <div class="card"><b>Starten met Windows</b><p>Vink <i>Starten met Windows (verborgen)</i> aan. Dat zet één regel in de Run-sleutel van jouw gebruiker (<code>HKCU</code>); uitvinken haalt hem weg. De starter start dan direct in het systeemvak.</p></div>
+    <div class="card"><b>Eén bot tegelijk</b><p>Een lokaal slot voorkomt dat <code>start-bot.bat</code> en de starter allebei een bot starten. Een tweede starter opent niet nog een keer.</p></div>
+  </div>
+  <div class="warn"><b>Niet getest op Windows:</b> de tray is onder Linux met een virtueel scherm getest. Het systeemvak-icoon, <code>pythonw</code> zonder venster en de autostart via het register zijn dus pas zeker na jouw eerste start. Lukt iets niet, kijk dan eerst in <code>bot.log</code> en meld wat je ziet.</div>
+</section>
+
+<section id="fout">
+  <h2>Problemen oplossen</h2>
+  <details><summary>start-bot.bat: "unrecognized arguments: -r requirements.txt" of "Het systeem kan het opgegeven pad niet vinden"</summary>
+    <p>Dit kwam door een fout in een oudere <code>start-bot.bat</code> (verkeerd geschreven <code>&amp;&amp;</code>). Gebruik het bestand uit de nieuwste zip. Bestaat de map <code>.venv</code> nog uit de mislukte poging, verwijder die dan eerst. Het nieuwe bestand controleert vooraf of Python en <code>.env</code> er zijn en ruimt een mislukte installatie zelf op.</p></details>
+  <details open><summary>De bot is online maar doet niks in mijn (admin-)testroom</summary>
+    <ol>
+      <li>Kijk in het paneel bovenaan bij <b>Let op</b>: daar staat meestal al de reden.</li>
+      <li>Staat het kanaal in <b>Waar antwoordt de bot?</b>, is het <b>aangevinkt</b> en heb je op <b>Opslaan</b> geklikt? Status moet "instellingen toegepast" tonen.</li>
+      <li>Staat het kanaal er niet bij of heeft het een ✗? Dan heeft de bot er geen rechten. Privékanaal: Kanaal bewerken → Rechten → Rol of lid toevoegen → de bot → Kanaal bekijken, Berichten sturen, Berichtgeschiedenis lezen op ✓.</li>
+      <li>Waarschuwing over "berichten zonder tekst"? Zet <b>Message Content Intent</b> aan (stap 2) en herstart de bot.</li>
+      <li>Kijk onder <b>Activiteit</b> bij "genegeerd per kanaal": telt daar het kanaal waarin je typt? Dan staat het niet aangevinkt of heb je een ander ID.</li>
+      <li>Druk bij het kanaal op <b>Test</b>. Komt het testbericht wel, dan kijkt de bot goed en ligt het aan cooldown, Ollama of pauze.</li>
+    </ol></details>
+  <details><summary>De bot start niet: "Zet DISCORD_TOKEN in .env, plus DISCORD_CHANNEL_ID of de koppeling met het paneel"</summary>
+    <p>De bot vindt <code>.env</code> niet of de velden zijn leeg. Het bestand moet in dezelfde map als <code>bot.py</code> staan en echt <code>.env</code> heten (niet <code>.env.txt</code>). Geen aanhalingstekens nodig.</p></details>
+  <details><summary>"Improper token has been passed" / LoginFailure</summary>
+    <p>Het token klopt niet of is vernieuwd. Maak in het Developer Portal opnieuw een token (Bot → Reset Token) en zet het in <code>.env</code>. Plak zonder spaties of regeleinden.</p></details>
+  <details><summary>"PrivilegedIntentsRequired"</summary>
+    <p>Stap 2 is niet gedaan of niet opgeslagen. Zet <b>Message Content Intent</b> aan in het Developer Portal en start de bot opnieuw.</p></details>
+  <details><summary>De bot is online maar reageert niet</summary>
+    <ul>
+      <li>Is het kanaal aangevinkt in het paneel (of klopt <code>DISCORD_CHANNEL_ID</code>)?</li>
+      <li>Heeft de bot in dat kanaal <b>View Channel</b>, <b>Read Message History</b> en <b>Send Messages</b>? Kanaalrechten kunnen serverrechten overschrijven.</li>
+      <li>Stuur je als gewone gebruiker? Berichten van andere bots worden genegeerd.</li>
+      <li>Zit je in de cooldown (8 s) of boven de uurlimiet (20)? Dan antwoordt de bot met een korte wachtmelding.</li>
+      <li>Staat de bot gepauzeerd in Beheer → Discord-bot? Dan meldt hij dat.</li>
+      <li>Kijk in het logboek van de tray-starter naar foutregels.</li>
+    </ul></details>
+  <details><summary>De bot antwoordt "De AI is nu niet bereikbaar" of "Ik kreeg geen antwoord van de AI"</summary>
+    <p>Draait Ollama? Test in PowerShell:</p>
+<pre><code>curl http://127.0.0.1:11434/api/tags</code></pre>
+    <p>Krijg je een lijst met modellen, dan werkt Ollama. Kloppen <code>OLLAMA_BASE</code> en het poortnummer? Wil je via de Cloudflare-tunnel, vul dan <code>OLLAMA_BASE</code> met het https-adres en eventueel <code>CF_ACCESS_CLIENT_ID</code>/<code>CF_ACCESS_CLIENT_SECRET</code> of <code>OLLAMA_API_KEY</code>.</p></details>
+  <details><summary>"Model not found" of een leeg antwoord</summary>
+    <p><code>OLLAMA_MODEL</code> moet exact een naam zijn uit <code>ollama list</code>, inclusief label (bijv. <code>qwen3:4b</code>). Ontbreekt het, haal het op met <code>ollama pull &lt;naam&gt;</code>.</p></details>
+  <details><summary>Het eerste antwoord duurt lang of loopt in de time-out</summary>
+    <p>Ollama laadt het model bij het eerste verzoek in het videogeheugen. Wacht even en probeer opnieuw. Blijft het traag, zet <code>OLLAMA_TIMEOUT</code> hoger (standaard 120) of kies een kleiner model. Past het model niet in je videogeheugen, dan draait het deels op de processor en is het merkbaar trager (controle: <code>ollama ps</code>).</p></details>
+  <details><summary>Python of pip niet gevonden in start-bot.bat</summary>
+    <p>Installeer Python 3.10+ met <i>Add python.exe to PATH</i> aangevinkt en open een nieuw venster. Controle: <code>python --version</code>. Mislukte een eerdere installatie halverwege, verwijder dan de map <code>.venv</code> en start opnieuw.</p></details>
+  <details><summary>Een vraag over code komt toch bij het model terecht</summary>
+    <p>De router werkt op Nederlandse trefwoorden. Een vraag in nette zinnen zonder die woorden komt door; het model houdt zich dan aan de regel, maar minder streng. Geef een voorbeeldzin door, dan kunnen de trefwoorden worden uitgebreid.</p></details>
+  <details><summary>Start / Stop in het paneel is grijs</summary>
+    <p>De tray-starter is niet verbonden. Draait hij (icoon naast de klok)? Staan <code>SBWEBUI_PING_URL</code> en <code>SBWEBUI_BOT_SECRET</code> in <code>.env</code>? Onder de statusregel in het venster staat de reden (bijvoorbeeld "geheim of klok klopt niet"). Herstart de starter na een wijziging van <code>.env</code>.</p></details>
+  <details><summary>"Er draait al een bot op deze pc"</summary>
+    <p>Er draait al een bot: via <code>start-bot.bat</code>, een eerdere tray-start of een ander venster. Sluit die af, of stop hem via de tray-starter. Blijft het zo? Open Taakbeheer en sluit <code>pythonw.exe</code> of <code>python.exe</code> uit deze map.</p></details>
+  <details><summary>De bot crasht steeds en blijft gestopt</summary>
+    <p>Na 3 crashes in 5 minuten geeft de starter op. Open het logboek in het venster (of <code>bot.log</code>): de laatste regels noemen de oorzaak, meestal een verkeerd token of ontbrekende intent. Herstel het en druk op Start.</p></details>
+  <details><summary>Alarmen komen niet aan in het alarmkanaal</summary>
+    <p>Is het kanaal zichtbaar voor @everyone, dan stuurt de bot er bewust niets heen (het paneel waarschuwt). Heeft de bot er geen schrijfrecht, dan ook niet. Druk op <b>Stuur testalarm</b> voor de uitkomst. Het alarmkanaal mag niet ook een antwoordkanaal zijn.</p></details>
+  <details><summary>Het paneel blijft op "offline"</summary>
+    <p>Controleer <code>SBWEBUI_PING_URL</code> (volledig https-adres naar <code>bot_ping.php</code>) en <code>SBWEBUI_BOT_SECRET</code> (exact het geheim uit het paneel; na "vernieuwen" in het paneel moet je het in <code>.env</code> aanpassen). Klopt je pc-klok? De handtekening is maximaal 5 minuten geldig. Herstart de bot na elke wijziging.</p></details>
+  <details><summary>Het token is gelekt</summary>
+    <p>Developer Portal → Bot → <b>Reset Token</b>, daarna het nieuwe token in <code>.env</code>. Het oude werkt dan niet meer.</p></details>
+</section>
+
+<section id="instel">
+  <h2>Alle instellingen in <code>.env</code></h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Naam</th><th>Standaard</th><th>Betekenis</th></tr></thead>
+    <tbody>
+      <tr><td><code>DISCORD_TOKEN</code></td><td>(verplicht)</td><td>Bot-token uit het Developer Portal</td></tr>
+      <tr><td><code>DISCORD_CHANNEL_ID</code></td><td>leeg</td><td>Terugval-kanaal; met het paneel kies je kanalen daar</td></tr>
+      <tr><td><code>SBBOT_LOCK_PORT</code></td><td>47831</td><td>Lokaal slot tegen twee bots tegelijk (alleen wijzigen bij een poortconflict)</td></tr>
+      <tr><td><code>BOT_NAME</code></td><td>SB AI</td><td>Naam die de bot zichzelf geeft</td></tr>
+      <tr><td><code>TIMEZONE</code></td><td>Europe/Amsterdam</td><td>Voor datum, dagdeel en tijd in antwoorden</td></tr>
+      <tr><td><code>OLLAMA_BASE</code></td><td>http://127.0.0.1:11434</td><td>Adres van Ollama</td></tr>
+      <tr><td><code>OLLAMA_MODEL</code></td><td>qwen3:4b</td><td>Model uit <code>ollama list</code></td></tr>
+      <tr><td><code>OLLAMA_TIMEOUT</code></td><td>120</td><td>Seconden wachten op Ollama</td></tr>
+      <tr><td><code>OLLAMA_API_KEY</code>, <code>CF_ACCESS_CLIENT_ID</code>, <code>CF_ACCESS_CLIENT_SECRET</code></td><td>leeg</td><td>Alleen via de Cloudflare-tunnel</td></tr>
+      <tr><td><code>SBWEBUI_PING_URL</code>, <code>SBWEBUI_BOT_SECRET</code></td><td>leeg</td><td>Koppeling met Beheer → Discord-bot: kanalen, instellingen, alarmen, Start/Stop, statistiek</td></tr>
+      <tr><td><code>COOLDOWN_SECONDS</code></td><td>8</td><td>Wachttijd tussen berichten per gebruiker (het paneel gaat voor)</td></tr>
+      <tr><td><code>MAX_PER_HOUR</code></td><td>20</td><td>Berichten per uur per gebruiker</td></tr>
+      <tr><td><code>MAX_PARALLEL</code></td><td>2</td><td>Gelijktijdige Ollama-verzoeken</td></tr>
+      <tr><td><code>MAX_INPUT_CHARS</code></td><td>1500</td><td>Langere vragen worden ingekort</td></tr>
+      <tr><td><code>MEMORY_MESSAGES</code></td><td>6</td><td>Berichten die de bot per gebruiker onthoudt (weg na herstart)</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Bekende grenzen</h3>
+  <ul>
+    <li>Geheugen is kort (6 berichten per gebruiker) en weg na een herstart.</li>
+    <li>De router werkt op Nederlandse trefwoorden.</li>
+    <li>Een klein model als <code>qwen3:4b</code> kan zich vergissen; de verwijzing zelf komt altijd van de router.</li>
+    <li>De bot werkt alleen als je pc en de tray-starter aan staan.</li>
+    <li>Het alarmkanaal werkt alleen als de bot zelf draait: valt de hele bot of pc uit, dan meldt het paneel "offline" maar komt er geen bericht in Discord.</li>
+  </ul>
+</section>
+
+<section id="veilig">
+  <h2>Veiligheid</h2>
+  <ul>
+    <li>Het token staat <b>alleen</b> in <code>.env</code>; dat bestand hoort niet in git en niet in een zip die je deelt.</li>
+    <li>De bot leest alleen de gekozen kanalen, geen DM's en geen andere bots.</li>
+    <li>Alarmen gaan alleen naar een kanaal dat niet voor @everyone zichtbaar is, en bevatten geen berichten of namen.</li>
+    <li>De tray-starter voert vanuit de site alleen <code>start</code>, <code>stop</code> en <code>restart</code> uit, gesigneerd met het geheim. Nooit vrije commando's.</li>
+    <li><code>@everyone</code> en <code>@here</code> worden onschadelijk gemaakt; de bot pingt niemand.</li>
+    <li>Het paneel krijgt alleen tellers en technische gegevens, geen berichten of namen. Het geheim geeft toegang tot Start/Stop van jouw bot: behandel het als een wachtwoord.</li>
+    <li>Geef de bot niet meer rechten dan <i>View Channels</i>, <i>Send Messages</i> en <i>Read Message History</i>.</li>
+  </ul>
+</section>
+
+</main>
+
+<footer><div class="wrap">SBWebUI Discord-bot · installatiehulp · hoort bij <code>tools/discord-bot/</code>. Als de code en deze pagina verschillen, wint de code en <code>README.md</code>.</div></footer>
+
+<script>
+(function(){
+  'use strict';
+  var KEY='sbbot-setup-v1';
+  function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return {}}}
+  function save(o){try{localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
+  var st=load();
+
+  // thema
+  var root=document.documentElement;
+  if(st.theme){root.setAttribute('data-theme',st.theme)}
+  document.getElementById('themeBtn').addEventListener('click',function(){
+    var light=root.getAttribute('data-theme')!=='light';
+    root.setAttribute('data-theme',light?'light':'dark');
+    st=load();st.theme=light?'light':'dark';save(st);
+  });
+
+  // stappen
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('#steps input[type=checkbox]'));
+  function prog(){
+    var n=boxes.filter(function(b){return b.checked}).length;
+    document.getElementById('progTxt').textContent=n+' van '+boxes.length;
+    document.getElementById('progBar').style.width=(n/boxes.length*100)+'%';
+    boxes.forEach(function(b){b.closest('li').classList.toggle('done',b.checked)});
+  }
+  boxes.forEach(function(b){
+    if(st.steps&&st.steps[b.id])b.checked=true;
+    b.addEventListener('change',function(){st=load();st.steps=st.steps||{};st.steps[b.id]=b.checked;save(st);prog()});
+  });
+  prog();
+  document.getElementById('resetSteps').addEventListener('click',function(){
+    boxes.forEach(function(b){b.checked=false});
+    st=load();st.steps={};st.tests={};save(st);
+    document.querySelectorAll('.tchk').forEach(function(c){c.checked=false});
+    prog();
+  });
+  document.querySelectorAll('.tchk').forEach(function(c,i){
+    if(st.tests&&st.tests[i])c.checked=true;
+    c.addEventListener('change',function(){st=load();st.tests=st.tests||{};st.tests[i]=c.checked;save(st)});
+  });
+
+  // kopieerknoppen in codeblokken
+  function copyText(t,btn){
+    var done=function(){var o=btn.textContent;btn.textContent='Gekopieerd';setTimeout(function(){btn.textContent=o},1400)};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,function(){fallback(t,done)})}else fallback(t,done);
+  }
+  function fallback(t,done){
+    var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();
+    try{document.execCommand('copy');done()}catch(e){}document.body.removeChild(a);
+  }
+  document.querySelectorAll('pre').forEach(function(pre){
+    var code=pre.querySelector('code');if(!code)return;
+    var b=pre.querySelector('.cp');
+    if(!b){b=document.createElement('button');b.type='button';b.className='cp';b.textContent='Kopieer';pre.appendChild(b)}
+    b.addEventListener('click',function(){copyText(code.textContent,b)});
+  });
+
+  // .env-bouwer
+  var ids={tok:'fTok',ch:'fCh',name:'fName',model:'fModel',base:'fBase',tz:'fTz',ping:'fPing',sec:'fSec',cool:'fCool',hour:'fHour'};
+  function v(k){return (document.getElementById(ids[k]).value||'').trim()}
+  function build(){
+    var msgs=[],ch=v('ch'),tok=v('tok');
+    if(ch&&!/^\d{15,22}$/.test(ch))msgs.push('Het kanaal-ID bestaat uit alleen cijfers (meestal 17 tot 20).');
+    if(!ch&&!(v('ping')&&v('sec')))msgs.push('Vul een kanaal-ID in, of het paneel-adres en -geheim (dan kies je kanalen in het paneel).');
+    if(tok&&(/\s/.test(tok)||tok.length<50))msgs.push('Dit lijkt niet op een volledig Discord-token (geen spaties, meestal langer dan 50 tekens).');
+    ['cool','hour'].forEach(function(k){if(v(k)&&!/^\d+(\.\d+)?$/.test(v(k)))msgs.push('Cooldown en uurlimiet moeten getallen zijn.')});
+    var ping=v('ping');
+    if(ping&&!/^https:\/\//.test(ping))msgs.push('Het paneel-adres moet met https:// beginnen.');
+    if(/["']/.test(tok+v('sec')))msgs.push('Gebruik geen aanhalingstekens in token of geheim.');
+    var out=[
+      '# SBWebUI Discord-bot (door de installatiehulp gemaakt)',
+      'DISCORD_TOKEN='+tok,
+      '# Optioneel: antwoordkanalen kies je in het paneel',
+      'DISCORD_CHANNEL_ID='+ch,
+      'BOT_NAME='+(v('name')||'SB AI'),
+      'TIMEZONE='+(v('tz')||'Europe/Amsterdam'),
+      '',
+      'OLLAMA_BASE='+(v('base')||'http://127.0.0.1:11434'),
+      'OLLAMA_MODEL='+(v('model')||'qwen3:4b'),
+      'OLLAMA_TIMEOUT=120',
+      'OLLAMA_API_KEY=',
+      'CF_ACCESS_CLIENT_ID=',
+      'CF_ACCESS_CLIENT_SECRET=',
+      '',
+      'SBWEBUI_PING_URL='+ping,
+      'SBWEBUI_BOT_SECRET='+v('sec'),
+      '',
+      'COOLDOWN_SECONDS='+(v('cool')||'8'),
+      'MAX_PER_HOUR='+(v('hour')||'20'),
+      'MAX_PARALLEL=2',
+      'MAX_INPUT_CHARS=1500',
+      'MEMORY_MESSAGES=6',''
+    ].join('\n');
+    document.querySelector('#envOut code').textContent=out;
+    var m=document.getElementById('envMsg');
+    m.hidden=!msgs.length;m.innerHTML=msgs.length?'<b>Controle:</b> '+msgs.join(' '):'';
+    return out;
+  }
+  Object.keys(ids).forEach(function(k){document.getElementById(ids[k]).addEventListener('input',build)});
+  document.getElementById('envHide').addEventListener('click',function(){
+    ['fTok','fSec'].forEach(function(id){var e=document.getElementById(id);e.type=e.type==='password'?'text':'password'});
+  });
+  document.getElementById('envDl').addEventListener('click',function(){
+    var blob=new Blob([build()],{type:'text/plain'}),a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download='.env';document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
+  });
+  build();
+})();
+</script>
+</body>
+</html>

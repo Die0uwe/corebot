@@ -1,0 +1,6 @@
+discord.py>=2.4
+aiohttp>=3.9
+tzdata
+customtkinter>=5.2
+pystray>=0.19
+Pillow>=10
