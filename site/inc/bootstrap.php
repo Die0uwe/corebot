@@ -8,7 +8,7 @@ declare(strict_types=1);
  */
 
 define('CB_ROOT', dirname(__DIR__));
-const CB_VERSION = '0.2.0';
+const CB_VERSION = '0.2.1';
 const CB_SCHEMA = '2';
 
 function cfg(string $key, mixed $default = null): mixed

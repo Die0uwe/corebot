@@ -1,0 +1,15 @@
+Upgrade van de oude SB AI-bot naar CoreBot 0.5.1 (zelfde bot, zelfde pc)
+
+1. Stop de bot (tray-starter > Stop, of sluit het venster).
+2. Pak de zip uit over de oude map. Je .env blijft staan (die zit niet in de zip).
+3. Pas .env aan:
+   - VERWIJDER of maak leeg: SBWEBUI_PING_URL, SBWEBUI_BOT_SECRET, DISCORD_CHANNEL_ID
+     (anders gelden de kanalen van het oude paneel nog en negeert de bot corebot.info).
+   - ZET: COREBOT_HUB_URL=https://corebot.scriptspace.nl/hub.php   (later corebot.info)
+          COREBOT_HUB_SECRET=<te vinden onder Platform op de site, alleen voor de beheerder>
+   - Laat DISCORD_TOKEN staan. Het token moet bij dezelfde Discord-applicatie horen als het
+     Application ID dat je in de site hebt ingevuld.
+4. Start de bot. Binnen een minuut verschijnen je servers op de site.
+5. Discord Developer Portal: geef de applicatie de naam CoreBot (General Information en Bot > Username).
+6. Per server kies je op de site de antwoordkanalen en de naam. De bot zet die naam als bijnaam in de server,
+   als hij het recht Bijnaam wijzigen heeft (gebruik anders de knop Bot toevoegen opnieuw).

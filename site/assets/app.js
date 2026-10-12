@@ -274,7 +274,7 @@ async function serverView(id) {
     return el('div', { class: 'stack panel' },
       sw('Bot aan in deze server', s.enabled, (v) => { s.enabled = v; G.touch(); }, 'Uit betekent dat de bot hier nergens antwoordt, ook niet in kanalen die je hieronder kiest.'),
       field('Toon van de bot', toneSelect(s, 'tone', 'Standaard van CoreBot'), 'Kanalen kunnen een eigen toon kiezen.'),
-      field('Naam van de bot', txt(s, 'name', 'CoreBot', 32), 'De naam waarmee de bot zichzelf noemt.'),
+      field('Naam van de bot', txt(s, 'name', 'CoreBot', 32), 'Zo noemt de bot zich in antwoorden, en zo heet hij bij jullie in de ledenlijst (als bijnaam). Dat laatste werkt als de bot het recht Bijnaam wijzigen heeft; voeg hem anders opnieuw toe met de knop Bot toevoegen.'),
       field('Extra instructie', el('textarea', { maxlength: 400, placeholder: 'Bijvoorbeeld: Dit is de server van onze gilde. Verwijs voor regels naar #regels.', oninput: (e) => { s.extra_prompt = e.target.value; G.touch(); cnt.textContent = e.target.value.length + ' van 400'; } }, s.extra_prompt), 'Wordt toegevoegd aan de basisregels van de bot. Die regels kun je er niet mee overschrijven.'),
       (cnt = el('div', { class: 'hint' }, s.extra_prompt.length + ' van 400')),
       el('h3', null, 'Limieten voor deze server'), el('p', { class: 'hint' }, 'Laat een veld leeg om de standaard van CoreBot te gebruiken.'),

@@ -46,7 +46,7 @@ def srv(gid, name, ch=True):
 anon = requests.Session()
 j = anon.get(B + 'api.php?a=me').json()
 ok('uitgelogd: user is null en csrf aanwezig', j.get('user') is None and len(j.get('csrf', '')) > 20)
-ok('uitgelogd: uitnodigingslink met juiste permissies', 'client_id=123456789012345678' in j['invite_url'] and 'permissions=274877991936' in j['invite_url'] and 'scope=bot' in j['invite_url'])
+ok('uitgelogd: uitnodigingslink met juiste permissies', 'client_id=123456789012345678' in j['invite_url'] and 'permissions=274945100800' in j['invite_url'] and 'scope=bot' in j['invite_url'])
 ok('uitgelogd: geen geheimen in het antwoord', 'geheim-geheim' not in json.dumps(j) and SECRET not in json.dumps(j))
 o = U('owner'); r, r2 = o.login()
 ok('login stuurt naar Discord met scope identify guilds', 'discord.com/oauth2/authorize' in r.headers['Location'] and 'scope=identify%20guilds' in r.headers['Location'] and 'redirect_uri=http%3A%2F%2F127.0.0.1%3A8098%2Fcallback.php' in r.headers['Location'], r.headers['Location'])
@@ -297,7 +297,7 @@ sql('alter table usage_daily drop column fallback'); sql('update settings set v=
 ok('v1-database migreert ook bij het openen van het paneel (api)', anon.get(B + 'api.php?a=me').status_code == 200 and sql('select count(*) from information_schema.COLUMNS where TABLE_SCHEMA=database() and TABLE_NAME="usage_daily" and COLUMN_NAME="fallback"') == '1')
 pv = requests.get(B + 'legal.php?p=privacy').text
 ok('privacytekst noemt de terugval, 24 uur en dat het geheugen niet in een database staat', all(t in pv for t in ('veelgestelde vragen', 'maximaal 24 uur', 'niet in een database bewaard')))
-ok('versie 0.2.0 in het paneel', anon.get(B + 'api.php?a=me').json()['version'] == '0.2.0')
+ok('versie 0.2.1 in het paneel', anon.get(B + 'api.php?a=me').json()['version'] == '0.2.1')
 
 # ---------- meerdere domeinen ----------
 def login_url(host, proto='https'):

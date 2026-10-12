@@ -32,7 +32,7 @@ from hub import HubClient
 from router import CMS_URL, WEB_URL, classify, referral
 
 log = logging.getLogger('sbbot')
-BOT_VERSION = '0.5.0'
+BOT_VERSION = '0.5.1'
 
 
 def env(name: str, default: str = '') -> str:
@@ -460,7 +460,7 @@ class SBBot(discord.Client):
         self.channels: set[int] = set(self.env_channels)
         self.alert_channel = 0
         self.alerts: set[str] = set(DEFAULT_ALERTS)
-        self.env_name = env('BOT_NAME', 'SB AI')
+        self.env_name = env('BOT_NAME', 'CoreBot')
         self.name = self.env_name
         self.tz = env('TIMEZONE', 'Europe/Amsterdam')
         self.max_in = int(env('MAX_INPUT_CHARS', '1500'))
@@ -505,6 +505,8 @@ class SBBot(discord.Client):
         self.fcache = AnswerCache()
         self.honest_at: dict[object, float] = {}
         self.daily_at: dict[object, float] = {}
+        self.nick_set: set[int] = set()        # servers waar wij de bijnaam van de bot zetten
+        self.nick_fail: dict[int, str] = {}    # server -> gewenste naam die niet lukte (niet elke minuut opnieuw proberen)
 
     # ---------- instellingen uit de site ----------
     def apply_config(self, raw: object) -> None:
@@ -661,6 +663,38 @@ class SBBot(discord.Client):
             pass
 
     # ---------- hub ----------
+    async def sync_nicks(self) -> None:
+        """Zet per server de bijnaam van de bot op de naam die de beheerder koos (alleen servers uit de hub; eigen kanalen blijven met rust).
+        Zonder gekozen naam gaat een eerder door ons gezette bijnaam weg. Zonder het recht Bijnaam wijzigen blijft alleen de AI-naam gelden."""
+        for g in list(self.guilds):
+            gid = getattr(g, 'id', 0)
+            me = getattr(g, 'me', None)
+            hg = self.hub_cfg.get(gid)
+            if not gid or me is None or hg is None:
+                continue
+            want = str(hg['server'].get('name') or '')[:32] or None
+            if want is None and gid not in self.nick_set:
+                continue
+            if getattr(me, 'nick', None) == want or self.nick_fail.get(gid) == (want or ''):
+                continue
+            if not getattr(getattr(me, 'guild_permissions', None), 'change_nickname', False):
+                if self.nick_fail.get(gid) != (want or ''):
+                    self.nick_fail[gid] = want or ''
+                    self.event('bijnaam', getattr(g, 'name', ''), note='recht Bijnaam wijzigen ontbreekt')
+                continue
+            try:
+                await me.edit(nick=want)
+            except Exception as e:  # noqa: BLE001 - een bijnaam is een extraatje; nooit de hub-lus laten stoppen
+                self.nick_fail[gid] = want or ''
+                self.event('bijnaam', getattr(g, 'name', ''), note=type(e).__name__)
+                continue
+            self.nick_fail.pop(gid, None)
+            if want:
+                self.nick_set.add(gid)
+            else:
+                self.nick_set.discard(gid)
+            self.event('bijnaam', getattr(g, 'name', ''), note='gezet' if want else 'teruggezet')
+
     def hub_servers(self, full: bool) -> list[dict]:
         out: list[dict] = []
         for g in self.guilds[:200]:
@@ -688,6 +722,7 @@ class SBBot(discord.Client):
                     if full:
                         self.hub_full_at = time.monotonic()
                     self.apply_hub(data)
+                    await self.sync_nicks()
             except Exception:  # noqa: BLE001 - de hub-lus mag nooit stoppen
                 log.exception('Fout in hub-lus')
             if self.hub_now is None:

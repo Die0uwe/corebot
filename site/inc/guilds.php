@@ -33,7 +33,7 @@ const CB_RANGES = [
 const CB_PERM_MANAGE_GUILD = 0x20;
 const CB_PERM_ADMIN = 0x8;
 // kijken + schrijven + embeds + geschiedenis lezen + schrijven in threads
-const CB_BOT_PERMISSIONS = '274877991936';
+const CB_BOT_PERMISSIONS = '274945100800'; // lezen, schrijven, geschiedenis, embeds, in threads, en Bijnaam wijzigen (per server een eigen botnaam)
 
 function cb_is_snowflake(mixed $v): bool
 {

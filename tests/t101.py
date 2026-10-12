@@ -21,7 +21,7 @@ with sync_playwright() as p:
     ctx = br.new_context(viewport={'width': 1280, 'height': 860}); a = ctx.new_page(); attach(a)
     a.goto(B); a.wait_for_selector('h1')
     ok('landing: titel en rings-diagram', 'per kanaal een eigen toon' in a.inner_text('h1') and a.locator('svg.rings').count() == 1)
-    ok('landing: bot toevoegen-link naar Discord met permissies', 'permissions=274877991936' in a.get_by_role('link', name='Bot toevoegen aan Discord').get_attribute('href'))
+    ok('landing: bot toevoegen-link naar Discord met permissies', 'permissions=274945100800' in a.get_by_role('link', name='Bot toevoegen aan Discord').get_attribute('href'))
     ok('landing: privacy- en voorwaardenlinks', a.get_by_role('link', name='Privacy', exact=True).count() == 1 and a.get_by_role('link', name='Voorwaarden', exact=True).count() == 1)
     a.screenshot(path='shots/c_landing_desktop.png', full_page=True)
     m = br.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2); mp = m.new_page(); attach(mp)

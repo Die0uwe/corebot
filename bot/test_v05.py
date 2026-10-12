@@ -205,10 +205,41 @@ async def tests():
 
 asyncio.run(tests())
 
+# ---------- bijnaam per server ----------
+async def nicktests():
+    b = B.SBBot(); await b.setup_hook()
+    class Me:
+        def __init__(self, nick, can): self.nick = nick; self.guild_permissions = SimpleNamespace(change_nickname=can); self.calls = []
+        async def edit(self, nick=None):
+            if getattr(self, 'boom', False): raise RuntimeError('nee')
+            self.calls.append(nick); self.nick = nick
+    class Gu:
+        def __init__(self, i, me): self.id, self.name, self.me = i, f'S{i}', me
+    m1, m2, m3, m4 = Me(None, True), Me(None, False), Me('Oud', True), Me(None, True)
+    gs = [Gu(1, m1), Gu(2, m2), Gu(3, m3), Gu(4, m4)]
+    type(b).guilds = property(lambda self: gs)
+    def cfg(name): return {'enabled': True, 'reason': '', 'model': '', 'server': {'name': name} if name else {}, 'channels': set(), 'channel_cfg': {}, 'allow_member_tone': True, 'faq': [], 'fallback': {'faq': True, 'cache': True, 'templates': True}}
+    b.hub_cfg = {1: cfg('Gildebot'), 2: cfg('Gildebot'), 3: cfg('Gildebot'), 4: cfg('')}
+    await b.sync_nicks()
+    ok('bijnaam: gezet op de servernaam', m1.calls == ['Gildebot'] and 1 in b.nick_set)
+    ok('bijnaam: zonder recht geen poging, wel een gebeurtenis', m2.calls == [] and any(e['k'] == 'bijnaam' and 'ontbreekt' in e['n'] for e in b.events))
+    ok('bijnaam: andere naam wordt overschreven', m3.calls == ['Gildebot'])
+    ok('bijnaam: geen naam gekozen en nooit door ons gezet: met rust laten', m4.calls == [])
+    await b.sync_nicks()
+    ok('bijnaam: tweede ronde doet niets (geen onnodige Discord-aanroepen)', m1.calls == ['Gildebot'] and m3.calls == ['Gildebot'])
+    b.hub_cfg[1] = cfg('')
+    await b.sync_nicks()
+    ok('bijnaam: naam weggehaald -> terug naar de naam van de applicatie', m1.calls == ['Gildebot', None] and 1 not in b.nick_set)
+    m1.boom = True; b.hub_cfg[1] = cfg('Nieuw'); await b.sync_nicks(); await b.sync_nicks()
+    ok('bijnaam: Discord weigert -> niet elke minuut opnieuw proberen', b.nick_fail.get(1) == 'Nieuw' and m1.calls == ['Gildebot', None])
+    ok('standaardnaam is CoreBot', b.env_name == 'CoreBot' and b.public_name == 'CoreBot' and B.build_system(b.name).startswith('Je bent CoreBot'))
+    await b.session.close()
+asyncio.run(nicktests())
+
 # ---------- hub.py ----------
 async def hubtests():
     import aiohttp
-    h = HubClient('http://127.0.0.1:9204/hub.php', 'hubgeheim', '0.5.0')
+    h = HubClient('http://127.0.0.1:9204/hub.php', 'hubgeheim', '0.5.1')
     servers = [{'id': str(900000000000000000 + i), 'name': f'S{i}', 'icon': None, 'n': i} for i in range(60)]
     h.count(900000000000000003, 'a', 4); h.count(900000000000000003, 'fb', 2); h.left.add(900000000000000099); h.ack.add(U1)
     bodies = h.bodies(servers, {'up': True, 'since': 1_700_000_000, 'fails': 0}, '123456789012345678', now=1_800_000_000)
@@ -217,7 +248,7 @@ async def hubtests():
     ok('hub: tellers, vertrokken servers, vergeetbevestiging en AI-status alleen in het eerste verzoek',
        d0['usage'] == {'900000000000000003': {'a': 4, 'l': 0, 'e': 0, 'fb': 2}} and d0['left'] == ['900000000000000099'] and d0['ack_forget'] == [str(U1)]
        and d0['ai']['up'] is True and 'usage' not in d1 and 'ai' not in d2)
-    ok('hub: tijdstempel en versie', d0['ts'] == 1_800_000_000 and d0['version'] == '0.5.0' and d0['app_id'] == '123456789012345678')
+    ok('hub: tijdstempel en versie', d0['ts'] == 1_800_000_000 and d0['version'] == '0.5.1' and d0['app_id'] == '123456789012345678')
     big = [{'id': str(900000000000000000 + i), 'name': 'x', 'icon': None, 'n': 1, 'ch': [{'id': str(910000000000000000 + j), 'n': 'k' * 90, 't': 0, 'p': j} for j in range(250)]} for i in range(10)]
     bb = h.bodies(big, {'up': True, 'since': 1_700_000_000, 'fails': 0})
     ok('hub: grote kanaallijsten worden verdeeld, elk verzoek onder 120 kB', len(bb) > 1 and all(len(x[0].encode()) < 120_000 for x in bb), str([len(x[0]) for x in bb]))
