@@ -52,7 +52,7 @@ function discord_login_url(): string
     $_SESSION['oauth'] = ['state' => $state, 'exp' => time() + 600];
     return 'https://discord.com/oauth2/authorize?' . http_build_query([
         'client_id' => $id, 'redirect_uri' => discord_redirect_uri(), 'response_type' => 'code',
-        'scope' => 'identify guilds', 'state' => $state, 'prompt' => 'none',
+        'scope' => 'identify guilds', 'state' => $state,
     ], '', '&', PHP_QUERY_RFC3986);
 }
 
