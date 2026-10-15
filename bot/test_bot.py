@@ -81,7 +81,7 @@ class FakeChan:
             async def __aenter__(s): return s
             async def __aexit__(s, *a): return False
         return C()
-    async def send(self, t): self.sent.append(t)
+    async def send(self, t=None, **kw): self.sent.append(t if t is not None else kw)
 
 async def main():
     async with aiohttp.ClientSession() as s:
@@ -105,7 +105,12 @@ async def main():
     ok('code-vraag: doorverwezen, model niet aangeroepen', seen['body'] is None and 'scriptspace.nl' in m3.replies[0])
     m4 = FakeMsg('bouw een plugin voor mijn cms'); await b.on_message(m4)
     ok('cms-vraag: doorverwezen naar cms.scriptspace.nl', 'cms.scriptspace.nl' in m4.replies[0])
-    for label, msg in [('ander kanaal', FakeMsg('hoi', channel=9)), ('bot-bericht', FakeMsg('hoi', bot=True)), ('DM', FakeMsg('hoi', guild=False)), ('leeg bericht', FakeMsg('  '))]:
+    md = FakeMsg('hoi', guild=False, uid=77); seen['body'] = None; await b.on_message(md)
+    sent = md.channel.sent[0] if md.channel.sent else {}
+    ok('DM: verwijst naar de site, zonder AI', seen['body'] is None and not md.replies and 'corebot.info' in str(sent['embed'].url) and len(sent['view'].children) == 2)
+    md2 = FakeMsg('nog eens', guild=False, uid=77); await b.on_message(md2)
+    ok('DM: tweede keer binnen 6 uur stil', not md2.channel.sent and not md2.replies)
+    for label, msg in [('ander kanaal', FakeMsg('hoi', channel=9)), ('bot-bericht', FakeMsg('hoi', bot=True)), ('bot-DM', FakeMsg('hoi', guild=False, bot=True)), ('leeg bericht', FakeMsg('  '))]:
         seen['body'] = None; await b.on_message(msg)
         ok(f'genegeerd: {label}', not msg.replies and seen['body'] is None)
     mt = FakeMsg('x' * 2000); await b.on_message(mt)
@@ -240,7 +245,7 @@ async def v3tests():
     seen['fail'] = True; mf = FakeMsg('hoe gaat het', channel=CH2, uid=77); await b.on_message(mf); seen['fail'] = False
     ok('Ollama-fout in de berichtstroom: gebruiker krijgt melding en er komt een alarm (dedupe op soort)', 'niet bereikbaar' in mf.replies[0] and b.reporter.pending['errors'] == 1)
     # v0.3.1: model bestaat niet
-    ok('versie 0.3.2 en soort model in standaardalarmen', B.BOT_VERSION == '0.5.1' and 'model' in B.ALERT_KINDS and 'model' in B.DEFAULT_ALERTS)
+    ok('versie 0.3.2 en soort model in standaardalarmen', B.BOT_VERSION == '0.5.4' and 'model' in B.ALERT_KINDS and 'model' in B.DEFAULT_ALERTS)
     async with aiohttp.ClientSession() as s404:
         seen['code'] = 404
         try:
@@ -356,7 +361,7 @@ async def recheck_loop():
     ok('hartslaglus: na opdracht komt binnen ~6 s een tweede hartslag (niet pas na 30 s)', len(pings) >= n0 + 2, str(len(pings) - n0))
     got = [r for _, d in pings[n0:] for r in d.get('action_results', [])]
     ok('hartslaglus: tweede hartslag meldt de uitkomst van de opdracht', {'id': 'rcl1', 'ok': True, 'error': ''} in got, str(got))
-    ok('hartslaglus: hartslag bevat tijdstip van controle en vlaggen l/t', 'perm_at' in pings[n0][1] and pings[n0][1]['version'] == '0.5.1')
+    ok('hartslaglus: hartslag bevat tijdstip van controle en vlaggen l/t', 'perm_at' in pings[n0][1] and pings[n0][1]['version'] == '0.5.4')
     EXTRA.clear()
     await b.session.close()
 asyncio.run(recheck_loop())
@@ -456,5 +461,47 @@ async def v4tests():
     ok('alarmsoort servers bestaat en staat standaard aan', 'servers' in B.ALERT_KINDS and 'servers' in B.DEFAULT_ALERTS)
     await b.session.close()
 asyncio.run(v4tests())
+
+# ---- v0.4.1: Bibliotheek als kennisbron via bot_rag.php (ondertekend)
+import hashlib, hmac
+lib = {}
+class R(BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_POST(self):
+        raw = self.rfile.read(int(self.headers['Content-Length']))
+        lib['path'], lib['raw'] = self.path, raw
+        lib['sig_ok'] = hmac.compare_digest(hmac.new(b'geheim', raw, hashlib.sha256).hexdigest(), self.headers.get('X-Bot-Signature', ''))
+        out = json.dumps({'ok': True, 'block': 'Fragmenten uit de Bibliotheek van deze site.\n[1] Docker compose\nStart containers.', 'sources': [
+            {'title': 'Docker compose', 'url': 'https://sb.example.nl/#/p/docker-compose'}, {'title': 'Ra[a]r *titel*', 'url': 'javascript:alert(1)'}]}).encode()
+        self.send_response(200); self.send_header('Content-Type', 'application/json'); self.send_header('Content-Length', str(len(out))); self.end_headers(); self.wfile.write(out)
+rsrv = HTTPServer(('127.0.0.1', 9203), R); threading.Thread(target=rsrv.serve_forever, daemon=True).start()
+
+async def v41tests():
+    import os
+    os.environ.update({'DISCORD_CHANNEL_ID': '5', 'OLLAMA_BASE': 'http://127.0.0.1:9201', 'COOLDOWN_SECONDS': '0', 'MAX_PER_HOUR': '50'})
+    ok('Library: adres afgeleid van de hartslag', B.Library('https://sb.nl/beta/bot_ping.php', 'g').url == 'https://sb.nl/beta/bot_rag.php')
+    ok('Library: zonder hartslagadres of geheim uit', not B.Library('', 'g').enabled and not B.Library('https://sb.nl/bot_ping.php', '').enabled)
+    ok('Library: LIBRARY=0 zet hem uit', not B.Library('https://sb.nl/bot_ping.php', 'g', False).enabled)
+    b = B.SBBot(); await b.setup_hook()
+    b.library = B.Library('http://127.0.0.1:9203/bot_ping.php', 'geheim')
+    ok('v0.5.4: bronlinks staan standaard uit', b.show_sources is False)
+    m0 = FakeMsg('hoe start ik docker containers?', uid=400); await b.on_message(m0)
+    ok('v0.5.4: wel Bibliotheek, geen bronregel in Discord', 'Fragmenten uit de Bibliotheek' in seen['body']['messages'][-1]['content'] and 'Uit de Bibliotheek' not in ' '.join(m0.replies), ' '.join(m0.replies))
+    b.show_sources = True  # LIBRARY_SOURCES=1
+    seen['fail'] = False; seen['code'] = None
+    m = FakeMsg('hoe start ik docker containers?', uid=401); await b.on_message(m)
+    sent = json.loads(lib['raw'])
+    ok('bot vraagt bot_rag.php met handtekening en vraag', lib['path'] == '/bot_rag.php' and lib['sig_ok'] and sent['q'] == 'hoe start ik docker containers?' and abs(sent['ts'] - __import__('time').time()) < 10)
+    user = seen['body']['messages'][-1]['content']
+    ok('fragmenten gaan vóór de vraag naar het model', 'Fragmenten uit de Bibliotheek' in user and user.rstrip().endswith('Vraag van de gebruiker:\nhoe start ik docker containers?'), user[-120:])
+    reply = ' '.join(m.replies)
+    ok('bron onder het antwoord, link zonder voorbeeldkaart', '-# Uit de Bibliotheek: [Docker compose](<https://sb.example.nl/#/p/docker-compose>)' in reply, reply)
+    ok('onveilige link wordt alleen tekst, opmaaktekens weg', 'javascript:' not in reply and 'Raar titel' in reply, reply)
+    ok('geheugen bewaart het antwoord zonder bronregel', all('Uit de Bibliotheek' not in x['content'] for x in b.mem((5, 401), 6)))
+    b.library = B.Library('http://127.0.0.1:9299/bot_ping.php', 'geheim', timeout=1.0)
+    m2 = FakeMsg('nog een vraag over docker', uid=402); await b.on_message(m2)
+    ok('Bibliotheek onbereikbaar: gewoon antwoord zonder fragmenten', m2.replies == ['Het is zaterdagavond.'] and 'Fragmenten' not in seen['body']['messages'][-1]['content'], str(m2.replies))
+    await b.session.close()
+asyncio.run(v41tests())
 
 print(f'\n{sum(res)}/{len(res)} geslaagd'); sys.exit(0 if all(res) else 1)

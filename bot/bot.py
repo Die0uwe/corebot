@@ -32,7 +32,9 @@ from hub import HubClient
 from router import CMS_URL, WEB_URL, classify, referral
 
 log = logging.getLogger('sbbot')
-BOT_VERSION = '0.5.1'
+BOT_VERSION = '0.5.4'
+SITE_URL = 'https://www.corebot.info'
+DM_GAP = 6 * 3600  # hoogstens één doorverwijzing per gebruiker per 6 uur
 
 
 def env(name: str, default: str = '') -> str:
@@ -402,6 +404,52 @@ class Limiter:
         return None
 
 
+class Library:
+    """Bibliotheek van SBWebUI als kennisbron (sinds v0.4.1, in v0.5.3 naar de CoreBot-lijn gehaald). Vraagt bot_rag.php om fragmenten
+    bij een vraag, ondertekend met hetzelfde geheim als de hartslag. Faalt stil: zonder antwoord binnen een paar seconden gaat de bot
+    gewoon door zonder Bibliotheek."""
+
+    def __init__(self, ping_url: str, secret: str, enabled: bool = True, timeout: float = 4.0):
+        self.url = ping_url[:-len('bot_ping.php')] + 'bot_rag.php' if ping_url.endswith('bot_ping.php') else ''
+        self.secret, self.timeout = secret, timeout
+        self.on = enabled
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.on and self.url and self.secret)
+
+    async def lookup(self, session: aiohttp.ClientSession, question: str) -> tuple[str, list[dict]]:
+        if not self.enabled or len(question.strip()) < 3:
+            return '', []
+        raw = json.dumps({'ts': int(time.time()), 'q': question[:1500]}, separators=(',', ':'), ensure_ascii=False)
+        sig = hmac.new(self.secret.encode(), raw.encode(), hashlib.sha256).hexdigest()
+        try:
+            async with session.post(self.url, data=raw.encode(), headers={'Content-Type': 'application/json', 'X-Bot-Signature': sig},
+                                    timeout=aiohttp.ClientTimeout(total=self.timeout)) as r:
+                if r.status != 200:
+                    log.warning('Bibliotheek: status %s', r.status)
+                    return '', []
+                data = await r.json(content_type=None)
+        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as e:
+            log.warning('Bibliotheek niet bereikbaar: %s', e)
+            return '', []
+        if not isinstance(data, dict):
+            return '', []
+        block = data.get('block') if isinstance(data.get('block'), str) else ''
+        sources = [x for x in (data.get('sources') or []) if isinstance(x, dict) and isinstance(x.get('title'), str)][:3]
+        return block[:4000], sources
+
+
+def sources_line(sources: list[dict]) -> str:
+    """Bronnen onder een antwoord; links tussen < > zodat Discord er geen grote voorbeeldkaart van maakt."""
+    parts = []
+    for x in sources[:2]:
+        title = re.sub(r'[\[\]()<>*_`|~]', '', str(x.get('title', '')))[:80]
+        url = str(x.get('url') or '')
+        parts.append(f'[{title}](<{url}>)' if url.startswith(('https://', 'http://')) else title)
+    return ('\n-# Uit de Bibliotheek: ' + ', '.join(parts)) if parts else ''
+
+
 class Reporter:
     """Meldt elke 30 seconden aan het beheerpaneel van SBWebUI (bot_ping.php): levend, tellers, kanalen die de bot ziet en gebeurtenissen.
     De hartslag is ondertekend met een gedeeld geheim (HMAC) en bevat geen berichten en geen namen van gebruikers.
@@ -481,6 +529,10 @@ class SBBot(discord.Client):
         self.chan_cfg: dict[int, dict] = {}     # kanaal-id -> profiel (alleen afwijkingen)
         self.sys_cache: dict[tuple, str] = {}
         self.reporter = Reporter(env('SBWEBUI_PING_URL'), env('SBWEBUI_BOT_SECRET'))
+        self.library = Library(env('SBWEBUI_PING_URL'), env('SBWEBUI_BOT_SECRET'), env('LIBRARY', '1') != '0')
+        # v0.5.4: de Bibliotheek wordt wel gebruikt, maar de bronlinks staan standaard uit: gewone Discord-gebruikers kunnen
+        # (nog) niet in de Bibliotheek. LIBRARY_SOURCES=1 in .env zet de regel "Uit de Bibliotheek: …" weer aan.
+        self.show_sources = env('LIBRARY_SOURCES', '0') == '1'
         self.paused = False
         self.notice_at = float('-inf')  # niet 0.0: monotonic() kan kleiner dan 300 zijn kort na het opstarten van de pc
         self.beat_now: asyncio.Event | None = None  # wakker maken voor een extra hartslag (bv. na 'Opnieuw controleren')
@@ -505,6 +557,7 @@ class SBBot(discord.Client):
         self.fcache = AnswerCache()
         self.honest_at: dict[object, float] = {}
         self.daily_at: dict[object, float] = {}
+        self.dm_at: dict[object, float] = {}
         self.nick_set: set[int] = set()        # servers waar wij de bijnaam van de bot zetten
         self.nick_fail: dict[int, str] = {}    # server -> gewenste naam die niet lukte (niet elke minuut opnieuw proberen)
 
@@ -975,8 +1028,32 @@ class SBBot(discord.Client):
             self.seen_ignored.add(m.channel.id)
             log.info('Bericht gezien in #%s (%s), maar dat kanaal is niet ingesteld. Kies het in Beheer > Discord-bot als de bot daar moet antwoorden.', nm, m.channel.id)
 
+    async def on_dm(self, m: discord.Message) -> None:
+        """Privébericht: de bot antwoordt alleen in servers en wijst de weg naar de site (niet vaker dan eens per DM_GAP)."""
+        if not rate_due(self.dm_at, m.author.id, DM_GAP):
+            return
+        site = env('COREBOT_SITE_URL', SITE_URL).rstrip('/')
+        host = site.split('//', 1)[-1]
+        embed = discord.Embed(
+            title='Hoi! Ik antwoord alleen in servers',
+            description=('Privéberichten beantwoord ik niet. Stel je vraag in een kanaal van een server waar ik actief ben.\n\n'
+                         f'Op **{host}** lees je hoe je mij aan je eigen server toevoegt en instelt, met een wiki en het routeplan. '
+                         'Gratis en reclamevrij.'),
+            url=site, colour=discord.Colour(0x3FD4FF))
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(label='Naar de site', url=site + '/'))
+        view.add_item(discord.ui.Button(label='Wiki en how-to', url=site + '/#/wiki'))
+        try:
+            await m.channel.send(embed=embed, view=view)
+            log.info('Privébericht van %s: doorverwezen naar %s', m.author.id, site)
+        except discord.HTTPException as e:
+            log.warning('Doorverwijzing per privébericht mislukt: %s', e)
+
     async def on_message(self, m: discord.Message) -> None:
-        if m.author.bot or m.guild is None:
+        if m.author.bot:
+            return
+        if m.guild is None:
+            await self.on_dm(m)
             return
         gid = getattr(m.guild, 'id', 0)
         hub_g = self.hub_cfg.get(gid)
@@ -1045,7 +1122,8 @@ class SBBot(discord.Client):
             try:
                 hist = list(self.mem(mkey, eff['memory']))
                 who = f"; de gebruiker heet {eff['nick']}" if eff['nick'] else ''
-                user_msg = f'[{time_context(self.tz)}{who}]\n\n{text}'
+                block, sources = await self.library.lookup(self.session, text)
+                user_msg = f'[{time_context(self.tz)}{who}]\n\n' + (f'{block}\n\nVraag van de gebruiker:\n{text}' if block else text)
                 answer = clean_answer(await self.ollama.chat(self.session, [{'role': 'system', 'content': eff['system']}, *hist, {'role': 'user', 'content': user_msg}], model=eff['model']))
             except ModelNotFound as e:
                 self.breaker.fail()
@@ -1081,7 +1159,7 @@ class SBBot(discord.Client):
         self.event('beantwoord', cname, ms)
         self.mem(mkey, eff['memory']).extend([{'role': 'user', 'content': text}, {'role': 'assistant', 'content': answer}])
         first = True
-        for part in split_message(answer):
+        for part in split_message(answer + (sources_line(sources) if block and self.show_sources else '')):
             if first:
                 await m.reply(part, mention_author=False)
                 first = False

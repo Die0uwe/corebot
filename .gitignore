@@ -1,7 +1,19 @@
-config.php
-config.php.tmp
+﻿# Secrets
 .env
-inc/install_code.php
+.env.*
+!.env.example
+env.txt
+
+# Logs & backups
+*.log
+*.bak
+*.bak-*
+tray.json
+tray.json.bak
+install.log
+install.zip
+
+# Python
 __pycache__/
 *.pyc
-tests/shots/
+.venv/
